@@ -1,8 +1,8 @@
-# Design Spec: QueryKit — Registry-Backed JSON Query Compiler
+# Design Spec: Joqi — Registry-Backed JSON Query Compiler
 
 ## 1. Summary
 
-QueryKit is an embeddable TypeScript library for validating JSON query specs against a trusted registry and compiling them into safe executable query representations.
+Joqi is an embeddable TypeScript library for validating JSON query specs against a trusted registry and compiling them into safe executable query representations.
 
 The core idea is simple:
 
@@ -14,7 +14,7 @@ untrusted JSON query
   -> adapter executable
 ```
 
-QueryKit should provide:
+Joqi should provide:
 
 ```txt
 - Standard query schema
@@ -37,11 +37,11 @@ The strongest architectural boundary is:
 
 ```txt
 Host applications decide what is exposed.
-QueryKit validates and compiles only what the resolved registry allows.
+Joqi validates and compiles only what the resolved registry allows.
 Adapters translate QueryIR into executable backend-specific queries.
 ```
 
-Business-specific drivers are optional. They sit above QueryKit and translate domain-specific specs into QueryKit's standard query schema.
+Business-specific drivers are optional. They sit above Joqi and translate domain-specific specs into Joqi's standard query schema.
 
 ---
 
@@ -82,7 +82,7 @@ The goal is to centralize the safe technical query contract.
 
 ## 3. Non-Goals
 
-QueryKit is not:
+Joqi is not:
 
 ```txt
 - A full BI platform
@@ -96,7 +96,7 @@ QueryKit is not:
 - A replacement for Drizzle or Prisma
 ```
 
-QueryKit should not know what concepts like “client-visible”, “Finlandia”, “Skyflow”, “Meta Ads”, or “role X can see margin” mean.
+Joqi should not know what concepts like “client-visible”, “Finlandia”, “Skyflow”, “Meta Ads”, or “role X can see margin” mean.
 
 Those concepts belong in host application policy, registry policies, mandatory constraints, or optional business drivers.
 
@@ -147,7 +147,7 @@ The host application owns:
 - Final application response shape
 ```
 
-QueryKit owns:
+Joqi owns:
 
 ```txt
 - Standard query schema
@@ -175,7 +175,7 @@ Adapters own:
 
 ## 5. Core Contracts
 
-QueryKit has two primary public contracts:
+Joqi has two primary public contracts:
 
 ```txt
 1. QuerySpecSchema
@@ -188,7 +188,7 @@ Everything else exists to parse, validate, resolve, lower, compile, execute, or 
 
 ## 6. Query Spec Schema
 
-The query spec is the public JSON contract accepted by QueryKit.
+The query spec is the public JSON contract accepted by Joqi.
 
 It describes query intent, not SQL syntax.
 
@@ -298,7 +298,7 @@ Registry validation checks semantic correctness:
 
 ## 7. Registry Model
 
-QueryKit uses three registry layers:
+Joqi uses three registry layers:
 
 ```txt
 PhysicalRegistry
@@ -311,7 +311,7 @@ ResolvedRegistry
   per-request effective registry used by validation and compilation
 ```
 
-This gives QueryKit two important properties:
+This gives Joqi two important properties:
 
 ```txt
 - The physical schema can be generated automatically.
@@ -395,7 +395,7 @@ It is plain data, so it can come from:
 - JSON config
 - Database rows
 - Codegen output
-- A future QueryKit UI
+- A future Joqi UI
 ```
 
 Shape:
@@ -754,7 +754,7 @@ Frontend sees every database table and column.
 Good:
 
 ```txt
-Frontend asks QueryKit:
+Frontend asks Joqi:
 What can this user build in this context?
 ```
 
@@ -895,7 +895,7 @@ business JSON
   -> driver.parse
   -> driver.authorize
   -> driver.toQuerySpec
-  -> QueryKit core
+  -> Joqi core
   -> driver.render
 ```
 
@@ -917,13 +917,13 @@ The core compiler should not depend on drivers.
 Recommended package exports:
 
 ```txt
-@ypanagidis/querykit
-@ypanagidis/querykit/effect
-@ypanagidis/querykit/drizzle
-@ypanagidis/querykit/drizzle-effect
-@ypanagidis/querykit/prisma
-@ypanagidis/querykit/codegen
-@ypanagidis/querykit/react
+@ypanagidis/joqi
+@ypanagidis/joqi/effect
+@ypanagidis/joqi/drizzle
+@ypanagidis/joqi/drizzle-effect
+@ypanagidis/joqi/prisma
+@ypanagidis/joqi/codegen
+@ypanagidis/joqi/react
 ```
 
 Core exports:
@@ -938,7 +938,7 @@ resolveRegistry
 validateQuerySpec
 lowerQuerySpecToIR
 QueryIR
-createQueryKitEngine
+createJoqiEngine
 defineQuerySpecDriver
 ```
 
@@ -1051,7 +1051,7 @@ Do not include initially:
 
 ## 23. Final Position
 
-QueryKit should be:
+Joqi should be:
 
 > A registry-backed JSON query compiler for TypeScript apps. It validates a standard query spec against a trusted per-request resolved registry, lowers it to QueryIR, compiles it through adapters such as Drizzle and Prisma, and provides forensic traces for every step.
 

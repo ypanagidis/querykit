@@ -23,7 +23,7 @@ function Home() {
             </Link>
             <a
               className="transition hover:text-fd-foreground"
-              href="https://github.com/ypanagidis/querykit"
+              href="https://github.com/ypanagidis/joqi"
             >
               github
             </a>
@@ -148,7 +148,7 @@ return Response.json({ rows: result.rows });`}
             <CodeExample title="4. Approved query compiles to a SQLPlan" label="explain.sqlPlan">
               {`{
   "dialect": "postgres",
-  "sql": "select ... where \"invoices\".\"status\" = $1 and \"invoices\".\"totalCents\" >= $2 limit $3",
+  "sql": "select ... where \u005C"invoices\u005C".\u005C"status\u005C" = $1 and \u005C"invoices\u005C".\u005C"totalCents\u005C" >= $2 limit $3",
   "params": ["open", 10000, 25]
 }`}
             </CodeExample>
@@ -414,7 +414,7 @@ function CodePanel() {
 }
 
 const codeTokenPattern =
-  /("(?:\\.|[^"\\])*"|\$param|\b(?:const|await|return)\b|\b(?:true|false)\b|\b\d+(?:\.\d+)?\b|\b[A-Za-z_][A-Za-z0-9_]*(?=\s*:)|[{}\[\]():;,.=]|\s+|[A-Za-z_][A-Za-z0-9_]*)/g;
+  /("(?:\\.|[^"\\])*"|\$param|\b(?:const|await|return)\b|\b(?:true|false)\b|\b\d+(?:\.\d+)?\b|\b[A-Za-z_][A-Za-z0-9_]*(?=\s*:)|[{}[\]():;,.=]|\s+|[A-Za-z_][A-Za-z0-9_]*)/g;
 
 function HighlightedCode({ code }: Readonly<{ code: string }>) {
   return <code className="block min-w-max font-mono">{highlightCode(code)}</code>;
@@ -476,7 +476,7 @@ function highlightToken(token: string, rest: string, key: number): ReactNode {
     return <CodeProperty key={key}>{token}</CodeProperty>;
   }
 
-  if (/^[{}\[\]():;,.=]$/.test(token)) {
+  if (/^[{}[\]():;,.=]$/.test(token)) {
     return <CodePunctuation key={key}>{token}</CodePunctuation>;
   }
 

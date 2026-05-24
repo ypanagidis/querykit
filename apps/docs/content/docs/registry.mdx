@@ -45,7 +45,7 @@ Supported field types are `string`, `number`, `boolean`, `date`, `datetime`, `js
 Defaults let you choose a baseline. A conservative setup starts deny-by-default and opts fields in explicitly.
 
 ```ts
-import type { RegistryDefaults } from "@ypanagidis/querykit";
+import type { RegistryDefaults } from "@ypanagidis/joqi";
 
 export const defaults = {
   exposure: "deny-by-default",
@@ -68,7 +68,7 @@ Use `allow-by-default` only when your physical registry is already a curated pub
 The policy exposes sources, renames fields, and grants capabilities.
 
 ```ts
-import type { Policy } from "@ypanagidis/querykit";
+import type { Policy } from "@ypanagidis/joqi";
 
 export const policy = {
   version: "v1",
@@ -120,7 +120,7 @@ The `Policy<typeof physical>` helper gives TypeScript autocomplete for physical 
 `resolveRegistry` merges physical facts, defaults, and policy into the final public model.
 
 ```ts
-import { resolveRegistry } from "@ypanagidis/querykit";
+import { resolveRegistry } from "@ypanagidis/joqi";
 
 const registry = resolveRegistry({ physical, defaults, policy });
 ```

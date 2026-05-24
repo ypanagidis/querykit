@@ -3,7 +3,7 @@ title: Drizzle Adapter
 description: Generate physical registries from Drizzle metadata and execute SQL plans with Drizzle.
 ---
 
-`@ypanagidis/querykit-drizzle` is the first ORM adapter. It does two things:
+`@ypanagidis/joqi-drizzle` is the first ORM adapter. It does two things:
 
 ```txt
 Drizzle schema + relations -> PhysicalRegistry
@@ -15,7 +15,7 @@ It does not compile Joqi into Drizzle query-builder calls. Core Joqi compiles a 
 ## Create a physical registry
 
 ```ts
-import { createPhysicalRegistryFromDrizzle } from "@ypanagidis/querykit-drizzle";
+import { createPhysicalRegistryFromDrizzle } from "@ypanagidis/joqi-drizzle";
 
 const physical = createPhysicalRegistryFromDrizzle({
   schema,
@@ -33,7 +33,7 @@ const physical = createPhysicalRegistryFromDrizzle({
 If you already have `defineRelations(...)` output, use `createPhysicalRegistryFromDrizzleRelations`.
 
 ```ts
-import { createPhysicalRegistryFromDrizzleRelations } from "@ypanagidis/querykit-drizzle";
+import { createPhysicalRegistryFromDrizzleRelations } from "@ypanagidis/joqi-drizzle";
 
 const physical = createPhysicalRegistryFromDrizzleRelations(relations);
 ```
@@ -43,8 +43,8 @@ The adapter reads table names, schemas, columns, primary keys, enum values, and 
 ## Execute through Drizzle
 
 ```ts
-import { createQueryRuntime } from "@ypanagidis/querykit";
-import { drizzleExecutor } from "@ypanagidis/querykit-drizzle";
+import { createQueryRuntime } from "@ypanagidis/joqi";
+import { drizzleExecutor } from "@ypanagidis/joqi-drizzle";
 
 const runtime = createQueryRuntime({
   db,

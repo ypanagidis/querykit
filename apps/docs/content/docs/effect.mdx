@@ -14,7 +14,7 @@ import {
   lowerQuerySpecToIREffect,
   resolveRegistryEffect,
   validateQuerySpecEffect,
-} from "@ypanagidis/querykit/effect";
+} from "@ypanagidis/joqi/effect";
 
 const program = Effect.gen(function* () {
   const registry = yield* resolveRegistryEffect({ physical, defaults, policy });

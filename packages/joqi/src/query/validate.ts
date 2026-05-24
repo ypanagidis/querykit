@@ -1,5 +1,4 @@
-import { Effect, Schema } from "effect";
-import type * as Either from "effect/Either";
+import { Effect, Result, Schema } from "effect";
 import { ZodError } from "zod";
 
 import { QueryParamsSchema, QuerySpecSchema } from "../specs/query.js";
@@ -66,7 +65,7 @@ type ValidatedQuerySpecWithParamSource = Omit<QuerySpec, "where" | "limit" | "of
   readonly offset?: number | undefined;
 };
 
-const QueryFilterOperatorErrorSchema = Schema.Literal(
+const QueryFilterOperatorErrorSchema = Schema.Literals([
   "eq",
   "neq",
   "gt",
@@ -79,9 +78,9 @@ const QueryFilterOperatorErrorSchema = Schema.Literal(
   "endsWith",
   "isNull",
   "isNotNull",
-);
+]);
 
-export const QueryValidationIssueSchema = Schema.Union(
+export const QueryValidationIssueSchema = Schema.Union([
   Schema.Struct({
     code: Schema.Literal("unknown_source"),
     source: Schema.String,
@@ -99,18 +98,18 @@ export const QueryValidationIssueSchema = Schema.Union(
     relation: Schema.String,
   }),
   Schema.Struct({
-    code: Schema.Literal(
+    code: Schema.Literals([
       "field_not_selectable",
       "field_not_filterable",
       "field_not_sortable",
       "field_not_groupable",
-    ),
+    ]),
     source: Schema.String,
     path: Schema.String,
     field: Schema.String,
   }),
   Schema.Struct({
-    code: Schema.Literal("relation_not_selectable", "relation_not_filterable"),
+    code: Schema.Literals(["relation_not_selectable", "relation_not_filterable"]),
     source: Schema.String,
     path: Schema.String,
     relation: Schema.String,
@@ -148,16 +147,16 @@ export const QueryValidationIssueSchema = Schema.Union(
     path: Schema.String,
     expected: Schema.String,
   }),
-);
+]);
 
 export type QueryValidationIssue = typeof QueryValidationIssueSchema.Type;
 
-export class QueryParseError extends Schema.TaggedError<QueryParseError>()("QueryParseError", {
-  input: Schema.Literal("query", "registry", "params"),
+export class QueryParseError extends Schema.TaggedErrorClass<QueryParseError>()("QueryParseError", {
+  input: Schema.Literals(["query", "registry", "params"]),
   error: Schema.Defect,
 }) {}
 
-export class QueryValidationError extends Schema.TaggedError<QueryValidationError>()(
+export class QueryValidationError extends Schema.TaggedErrorClass<QueryValidationError>()(
   "QueryValidationError",
   {
     issues: Schema.Array(QueryValidationIssueSchema),
@@ -184,9 +183,9 @@ export const validateQuerySpecEffect: (
     const source = registry.sources[query.source];
 
     if (source === undefined) {
-      return yield* new QueryValidationError({
+      return yield* Effect.fail(new QueryValidationError({
         issues: [{ code: "unknown_source", source: query.source }],
-      });
+      }));
     }
 
     validateLimit(query, source, issues);
@@ -229,7 +228,7 @@ export const validateQuerySpecEffect: (
     }
 
     if (issues.length > 0) {
-      return yield* new QueryValidationError({ issues });
+      return yield* Effect.fail(new QueryValidationError({ issues }));
     }
 
     return stripQueryParamSources(query);
@@ -237,13 +236,13 @@ export const validateQuerySpecEffect: (
 );
 
 export const validateQuerySpec = (input: ValidateQuerySpecInput): ValidatedQuerySpec =>
-  unwrapValidateQuerySpecResult(Effect.runSync(Effect.either(validateQuerySpecEffect(input))));
+  unwrapValidateQuerySpecResult(Effect.runSync(Effect.result(validateQuerySpecEffect(input))));
 
 export const validateQuerySpecPromise = async (
   input: ValidateQuerySpecInput,
 ): Promise<ValidatedQuerySpec> =>
   unwrapValidateQuerySpecResult(
-    await Effect.runPromise(Effect.either(validateQuerySpecEffect(input))),
+    await Effect.runPromise(Effect.result(validateQuerySpecEffect(input))),
   );
 
 type FieldCapability = "selectable" | "filterable" | "sortable" | "groupable";
@@ -262,13 +261,13 @@ const parseValidationInput = <Value>(input: "query" | "registry" | "params", par
   });
 
 const unwrapValidateQuerySpecResult = (
-  result: Either.Either<ValidatedQuerySpec, ValidateQuerySpecError>,
+  result: Result.Result<ValidatedQuerySpec, ValidateQuerySpecError>,
 ): ValidatedQuerySpec => {
-  if (result._tag === "Left") {
-    throw result.left;
+  if (Result.isFailure(result)) {
+    throw result.failure;
   }
 
-  return result.right;
+  return result.success;
 };
 
 const stripQueryParamSources = (query: ValidatedQuerySpecWithParamSource): ValidatedQuerySpec => ({

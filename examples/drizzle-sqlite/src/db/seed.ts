@@ -63,4 +63,4 @@ await db.insert(placements).values([
 
 db.$client.close();
 
-console.log(`Seeded QueryKit SQLite database at ${databasePath}.`);
+console.log(`Seeded Joqi SQLite database at ${databasePath}.`);

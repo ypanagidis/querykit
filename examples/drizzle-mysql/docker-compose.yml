@@ -4,17 +4,17 @@ services:
     ports:
       - "3307:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: querykit
-      MYSQL_DATABASE: querykit_mysql
-      MYSQL_USER: querykit
-      MYSQL_PASSWORD: querykit
+      MYSQL_ROOT_PASSWORD: joqi
+      MYSQL_DATABASE: joqi_mysql
+      MYSQL_USER: joqi
+      MYSQL_PASSWORD: joqi
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "querykit", "-pquerykit"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "joqi", "-pjoqi"]
       interval: 5s
       timeout: 3s
       retries: 20
     volumes:
-      - querykit-drizzle-mysql:/var/lib/mysql
+      - joqi-drizzle-mysql:/var/lib/mysql
 
 volumes:
-  querykit-drizzle-mysql:
+  joqi-drizzle-mysql:

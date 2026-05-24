@@ -18,8 +18,8 @@ physical registry + defaults + policy
 ## Create a runtime
 
 ```ts
-import { createQueryRuntime } from "@ypanagidis/querykit";
-import { drizzleExecutor } from "@ypanagidis/querykit-drizzle";
+import { createQueryRuntime } from "@ypanagidis/joqi";
+import { drizzleExecutor } from "@ypanagidis/joqi-drizzle";
 
 const runtime = createQueryRuntime({
   db,

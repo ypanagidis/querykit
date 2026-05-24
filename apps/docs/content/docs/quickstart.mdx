@@ -8,7 +8,7 @@ Most apps should start with `createQueryRuntime`. The runtime wraps the full pip
 ## Install
 
 ```bash
-pnpm add @ypanagidis/querykit @ypanagidis/querykit-drizzle drizzle-orm
+pnpm add @ypanagidis/joqi @ypanagidis/joqi-drizzle drizzle-orm
 ```
 
 The docs use the Drizzle adapter because it can create a physical registry from Drizzle relation metadata and execute Joqi SQL plans.
@@ -39,8 +39,8 @@ This object is safe to store as JSON. Runtime values are passed separately throu
 ## Create the runtime
 
 ```ts
-import { createQueryRuntime } from "@ypanagidis/querykit";
-import { drizzleExecutor } from "@ypanagidis/querykit-drizzle";
+import { createQueryRuntime } from "@ypanagidis/joqi";
+import { drizzleExecutor } from "@ypanagidis/joqi-drizzle";
 
 const runtime = createQueryRuntime({
   db,

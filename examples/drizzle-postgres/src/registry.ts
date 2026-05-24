@@ -1,5 +1,5 @@
-import type { Policy, RegistryDefaults } from "@ypanagidis/querykit";
-import { createPhysicalRegistryFromDrizzleRelations } from "@ypanagidis/querykit-drizzle";
+import type { Policy, RegistryDefaults } from "@ypanagidis/joqi";
+import { createPhysicalRegistryFromDrizzleRelations } from "@ypanagidis/joqi-drizzle";
 
 import { relations } from "./db/schema.ts";
 

@@ -5,6 +5,6 @@ export default defineConfig({
   out: "./drizzle",
   dialect: "mysql",
   dbCredentials: {
-    url: process.env.DATABASE_URL ?? "mysql://querykit:querykit@127.0.0.1:3307/querykit_mysql",
+    url: process.env.DATABASE_URL ?? "mysql://joqi:joqi@127.0.0.1:3307/joqi_mysql",
   },
 });

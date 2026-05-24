@@ -5,7 +5,7 @@ import { integer, pgEnum, pgTable, varchar as pgVarchar } from "drizzle-orm/pg-c
 import { int as sqliteInt, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { describe, expect, it, vi } from "vitest";
 
-import type { SQLPlan } from "@ypanagidis/querykit";
+import type { SQLPlan } from "@ypanagidis/joqi";
 import {
   createPhysicalRegistryFromDrizzle,
   createPhysicalRegistryFromDrizzleRelations,

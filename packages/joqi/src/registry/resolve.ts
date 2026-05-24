@@ -1,5 +1,4 @@
-import { Effect, Schema } from "effect";
-import type * as Either from "effect/Either";
+import { Effect, Result, Schema } from "effect";
 import { ZodError } from "zod";
 
 import type { QueryFilterOperator } from "../specs/query.js";
@@ -30,7 +29,7 @@ export type ResolveRegistryInput = {
   policies?: readonly unknown[];
 };
 
-const FieldTypeErrorSchema = Schema.Literal(
+const FieldTypeErrorSchema = Schema.Literals([
   "string",
   "number",
   "boolean",
@@ -39,9 +38,9 @@ const FieldTypeErrorSchema = Schema.Literal(
   "json",
   "enum",
   "unknown",
-);
+]);
 
-const QueryFilterOperatorErrorSchema = Schema.Literal(
+const QueryFilterOperatorErrorSchema = Schema.Literals([
   "eq",
   "neq",
   "gt",
@@ -54,9 +53,9 @@ const QueryFilterOperatorErrorSchema = Schema.Literal(
   "endsWith",
   "isNull",
   "isNotNull",
-);
+]);
 
-export const RegistryResolutionIssueSchema = Schema.Union(
+export const RegistryResolutionIssueSchema = Schema.Union([
   Schema.Struct({
     code: Schema.Literal("unknown_source"),
     source: Schema.String,
@@ -112,18 +111,18 @@ export const RegistryResolutionIssueSchema = Schema.Union(
     type: FieldTypeErrorSchema,
     operator: QueryFilterOperatorErrorSchema,
   }),
-);
+]);
 
 export type RegistryResolutionIssue = typeof RegistryResolutionIssueSchema.Type;
 
-export class RegistryResolutionError extends Schema.TaggedError<RegistryResolutionError>()(
+export class RegistryResolutionError extends Schema.TaggedErrorClass<RegistryResolutionError>()(
   "RegistryResolutionError",
   {
     issues: Schema.Array(RegistryResolutionIssueSchema),
   },
 ) {}
 
-export class RegistryParseError extends Schema.TaggedError<RegistryParseError>()(
+export class RegistryParseError extends Schema.TaggedErrorClass<RegistryParseError>()(
   "RegistryParseError",
   {
     error: Schema.Defect,
@@ -147,7 +146,7 @@ export const resolveRegistryEffect: (
     collectStalePolicyReferenceIssues(physical, policy, issues);
 
     if (issues.length > 0) {
-      return yield* new RegistryResolutionError({ issues });
+      return yield* Effect.fail(new RegistryResolutionError({ issues }));
     }
 
     const publicSourcesByPhysical = new Map<string, string>();
@@ -238,7 +237,7 @@ export const resolveRegistryEffect: (
     issues.push(...duplicateSourceIssues);
 
     if (issues.length > 0) {
-      return yield* new RegistryResolutionError({ issues });
+      return yield* Effect.fail(new RegistryResolutionError({ issues }));
     }
 
     return yield* parseRegistryInput(() =>
@@ -251,12 +250,12 @@ export const resolveRegistryEffect: (
 );
 
 export const resolveRegistry = (input: ResolveRegistryInput): ResolvedRegistry =>
-  unwrapResolveRegistryResult(Effect.runSync(Effect.either(resolveRegistryEffect(input))));
+  unwrapResolveRegistryResult(Effect.runSync(Effect.result(resolveRegistryEffect(input))));
 
 export const resolveRegistryPromise = async (
   input: ResolveRegistryInput,
 ): Promise<ResolvedRegistry> =>
-  unwrapResolveRegistryResult(await Effect.runPromise(Effect.either(resolveRegistryEffect(input))));
+  unwrapResolveRegistryResult(await Effect.runPromise(Effect.result(resolveRegistryEffect(input))));
 
 type MergedSourcePolicy = Omit<SourcePolicy, "fields" | "relations"> & {
   fields?: Record<string, FieldPolicy> | undefined;
@@ -282,13 +281,13 @@ const parseRegistryInput = <Value>(parse: () => Value) =>
   });
 
 const unwrapResolveRegistryResult = (
-  result: Either.Either<ResolvedRegistry, ResolveRegistryError>,
+  result: Result.Result<ResolvedRegistry, ResolveRegistryError>,
 ): ResolvedRegistry => {
-  if (result._tag === "Left") {
-    throw result.left;
+  if (Result.isFailure(result)) {
+    throw result.failure;
   }
 
-  return result.right;
+  return result.success;
 };
 
 const parsePolicies: (

@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 
-import { createQueryRuntime } from "@ypanagidis/querykit";
-import { drizzleExecutor } from "@ypanagidis/querykit-drizzle";
+import { createQueryRuntime } from "@ypanagidis/joqi";
+import { drizzleExecutor } from "@ypanagidis/joqi-drizzle";
 
 import { db } from "./db/index.ts";
 import { defaults, physical, policy } from "./registry.ts";

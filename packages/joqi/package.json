@@ -1,6 +1,6 @@
 {
-  "name": "@ypanagidis/querykit",
-  "version": "0.0.2-alpha.0",
+  "name": "@ypanagidis/joqi",
+  "version": "0.0.1",
   "description": "Registry-backed JSON query compiler for TypeScript apps.",
   "license": "MIT",
   "files": [
@@ -19,8 +19,8 @@
     }
   },
   "publishConfig": {
-    "access": "restricted",
-    "tag": "alpha"
+    "access": "public",
+    "tag": "latest"
   },
   "scripts": {
     "build": "tsdown",
@@ -29,7 +29,7 @@
     "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
-    "effect": "3.21.2",
+    "effect": "4.0.0-beta.70",
     "zod": "4.4.3"
   }
 }

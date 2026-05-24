@@ -1,6 +1,6 @@
-# QueryKit Drizzle
+# Joqi Drizzle
 
-Drizzle adapter for QueryKit physical registries and SQL plans.
+Drizzle adapter for Joqi physical registries and SQL plans.
 
 This package intentionally keeps a small adapter surface:
 
@@ -9,22 +9,22 @@ Drizzle schema + rc3 relations -> PhysicalRegistry
 SQLPlan -> Drizzle SQL object -> db.execute(...)
 ```
 
-It does not compile QueryKit queries into Drizzle query-builder calls. Core QueryKit already compiles `QuerySpec + ResolvedRegistry` into a MySQL `SQLPlan`; this package creates the trusted physical registry from Drizzle metadata and executes SQL plans through a Drizzle-compatible database object.
+It does not compile Joqi queries into Drizzle query-builder calls. Core Joqi already compiles `QuerySpec + ResolvedRegistry` into a MySQL `SQLPlan`; this package creates the trusted physical registry from Drizzle metadata and executes SQL plans through a Drizzle-compatible database object.
 
 ## Install
 
 ```bash
-pnpm add @ypanagidis/querykit @ypanagidis/querykit-drizzle drizzle-orm@1.0.0-rc.3
+pnpm add @ypanagidis/joqi @ypanagidis/joqi-drizzle drizzle-orm@1.0.0-rc.3
 ```
 
 ## Usage
 
 ```ts
-import { createQueryRuntime } from "@ypanagidis/querykit";
+import { createQueryRuntime } from "@ypanagidis/joqi";
 import {
   createPhysicalRegistryFromDrizzle,
   drizzleExecutor,
-} from "@ypanagidis/querykit-drizzle";
+} from "@ypanagidis/joqi-drizzle";
 
 const physical = createPhysicalRegistryFromDrizzle({
   schema,
@@ -54,7 +54,7 @@ const result = await runtime.run({
 });
 ```
 
-The adapter converts MySQL/SQLite `?` placeholders and PostgreSQL `$1`, `$2`, ... placeholders in the QueryKit `SQLPlan` into Drizzle params using `sql.param(...)`, then calls `db.execute(...)` or SQLite-style `db.all(...)`.
+The adapter converts MySQL/SQLite `?` placeholders and PostgreSQL `$1`, `$2`, ... placeholders in the Joqi `SQLPlan` into Drizzle params using `sql.param(...)`, then calls `db.execute(...)` or SQLite-style `db.all(...)`.
 
 ## API
 
@@ -87,7 +87,7 @@ Implemented:
 - Execute through `db.execute(...)` or `db.all(...)`
 - Provide `drizzleExecutor()` for `createQueryRuntime`
 - Wrap execution failures in `DrizzleExecutionError`
-- Create a QueryKit `PhysicalRegistry` from Drizzle rc3 `defineRelations(...)` metadata
+- Create a Joqi `PhysicalRegistry` from Drizzle rc3 `defineRelations(...)` metadata
 
 Not implemented yet:
 

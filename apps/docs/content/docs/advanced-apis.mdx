@@ -12,7 +12,7 @@ import {
   parseQuerySpec,
   resolveRegistry,
   validateQuerySpec,
-} from "@ypanagidis/querykit";
+} from "@ypanagidis/joqi";
 
 const query = parseQuerySpec(spec);
 const registry = resolveRegistry({ physical, defaults, policy });
@@ -30,7 +30,7 @@ const sqlPlan = compileQuerySpecToSQL({
 All public schemas are exported for advanced validation flows.
 
 ```ts
-import { QuerySpecSchema, ResolvedRegistrySchema } from "@ypanagidis/querykit";
+import { QuerySpecSchema, ResolvedRegistrySchema } from "@ypanagidis/joqi";
 
 const queryResult = QuerySpecSchema.safeParse(input);
 const registryResult = ResolvedRegistrySchema.safeParse(registry);
@@ -73,7 +73,7 @@ Use `compileQuerySpecToSQL` if you need a SQL plan without executing it.
 Joqi can build and run result schemas from QueryIR.
 
 ```ts
-import { parseQueryIRResultRows } from "@ypanagidis/querykit";
+import { parseQueryIRResultRows } from "@ypanagidis/joqi";
 
 const rows = parseQueryIRResultRows(ir, adapterResult);
 ```

@@ -1,4 +1,4 @@
-# QueryKit Docs
+# Joqi Docs
 
 Documentation app built with TanStack Start and Fumadocs MDX.
 

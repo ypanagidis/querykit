@@ -41,4 +41,4 @@ await db.insert(placements).values([
 
 await db.$client.end();
 
-console.log("Seeded QueryKit PostgreSQL database.");
+console.log("Seeded Joqi PostgreSQL database.");

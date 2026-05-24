@@ -8,5 +8,5 @@ export default defineConfig({
   format: ["esm"],
   sourcemap: true,
   clean: true,
-  external: ["@ypanagidis/querykit", "drizzle-orm"],
+  external: ["@ypanagidis/joqi", "drizzle-orm"],
 });

@@ -1,7 +1,7 @@
 {
-  "name": "@ypanagidis/querykit-drizzle",
-  "version": "0.0.2-alpha.0",
-  "description": "Drizzle execution adapter for QueryKit SQL plans.",
+  "name": "@ypanagidis/joqi-drizzle",
+  "version": "0.0.1",
+  "description": "Drizzle execution adapter for Joqi SQL plans.",
   "license": "MIT",
   "files": [
     "dist"
@@ -15,8 +15,8 @@
     }
   },
   "publishConfig": {
-    "access": "restricted",
-    "tag": "alpha"
+    "access": "public",
+    "tag": "latest"
   },
   "scripts": {
     "build": "tsdown",
@@ -25,7 +25,7 @@
     "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
-    "@ypanagidis/querykit": "workspace:*",
+    "@ypanagidis/joqi": "workspace:*",
     "drizzle-orm": "1.0.0-rc.3"
   }
 }

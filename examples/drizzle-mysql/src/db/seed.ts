@@ -57,4 +57,4 @@ await db.insert(placements).values([
 
 await db.$client.end();
 
-console.log("Seeded QueryKit MySQL database.");
+console.log("Seeded Joqi MySQL database.");

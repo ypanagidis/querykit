@@ -1,15 +1,15 @@
-# QueryKit
+# Joqi
 
-QueryKit is a registry-backed JSON query compiler for TypeScript apps.
+Joqi is a registry-backed JSON query compiler for TypeScript apps.
 
-At its core, QueryKit should expose two standard contracts:
+At its core, Joqi should expose two standard contracts:
 
 ```txt
 1. Query Schema
 2. Registry Schema
 ```
 
-Given an untrusted JSON query and a trusted registry, QueryKit validates what is allowed, lowers the query into a normalized IR, and hands that IR to an adapter such as Drizzle or Prisma.
+Given an untrusted JSON query and a trusted registry, Joqi validates what is allowed, lowers the query into a normalized IR, and hands that IR to an adapter such as Drizzle or Prisma.
 
 ```txt
 unknown JSON
@@ -25,7 +25,7 @@ The package is currently private under the `@ypanagidis` npm scope.
 ## Install
 
 ```bash
-pnpm add @ypanagidis/querykit@alpha
+pnpm add @ypanagidis/joqi@alpha
 ```
 
 ## Usage
@@ -35,8 +35,8 @@ registry, validates and binds query params, lowers to IR, compiles SQL, executes
 through an adapter, and validates result rows.
 
 ```ts
-import { createQueryRuntime } from "@ypanagidis/querykit";
-import { drizzleExecutor } from "@ypanagidis/querykit-drizzle";
+import { createQueryRuntime } from "@ypanagidis/joqi";
+import { drizzleExecutor } from "@ypanagidis/joqi-drizzle";
 
 const spec = {
   version: "v1",
@@ -80,7 +80,7 @@ stage errors visible so callers can handle the right boundary:
 - Registry parsing/resolution failures throw `RegistryParseError` or `RegistryResolutionError`.
 - Query parsing/validation failures throw `QueryParseError` or `QueryValidationError`.
 - Missing `$param` values and invalid param types are `QueryValidationError` issues.
-- Adapter execution failures are thrown by the configured executor. For Drizzle, `drizzleExecutor()` uses `DrizzleExecutionError` from `@ypanagidis/querykit-drizzle`.
+- Adapter execution failures are thrown by the configured executor. For Drizzle, `drizzleExecutor()` uses `DrizzleExecutionError` from `@ypanagidis/joqi-drizzle`.
 - Result row validation failures come from the result schema parser.
 
 Validation happens before execution. If params are missing or invalid, the
@@ -98,7 +98,7 @@ import {
   parseQuerySpec,
   resolveRegistry,
   validateQuerySpec,
-} from "@ypanagidis/querykit";
+} from "@ypanagidis/joqi";
 
 const query = parseQuerySpec(spec);
 const registry = resolveRegistry({ physical, defaults, policy });
@@ -110,7 +110,7 @@ const sqlPlan = compileQuerySpecToSQL({ query: validatedQuery, registry, dialect
 All schemas are also exported directly for advanced validation flows:
 
 ```ts
-import { QuerySpecSchema, ResolvedRegistrySchema } from "@ypanagidis/querykit";
+import { QuerySpecSchema, ResolvedRegistrySchema } from "@ypanagidis/joqi";
 
 const result = QuerySpecSchema.safeParse(input);
 ```
@@ -127,7 +127,7 @@ import {
   lowerQuerySpecToIREffect,
   resolveRegistryEffect,
   validateQuerySpecEffect,
-} from "@ypanagidis/querykit/effect";
+} from "@ypanagidis/joqi/effect";
 
 const program = Effect.gen(function* () {
   const registry = yield* resolveRegistryEffect({ physical, defaults, policy });
@@ -191,7 +191,7 @@ type SQLPlan = {
 
 ### Query Schema
 
-The query schema is the public JSON shape accepted by QueryKit.
+The query schema is the public JSON shape accepted by Joqi.
 
 It should describe query intent, not raw SQL:
 
@@ -255,7 +255,7 @@ The template stays stable:
 
 ### Field Paths And Derived Joins
 
-QueryKit intentionally uses public dotted field paths for relation fields:
+Joqi intentionally uses public dotted field paths for relation fields:
 
 ```txt
 name
@@ -275,7 +275,7 @@ campaign.name
   -> campaign has an exposed name field
 ```
 
-After validation, QueryKit derives a deduplicated join plan from those field paths. The join plan is visible in `QueryIR.joins` and is what the SQL compiler uses.
+After validation, Joqi derives a deduplicated join plan from those field paths. The join plan is visible in `QueryIR.joins` and is what the SQL compiler uses.
 
 So relation traversal is implicit in the public query for UI ergonomics, but explicit in the compiled plan for inspection and execution.
 
@@ -283,7 +283,7 @@ So relation traversal is implicit in the public query for UI ergonomics, but exp
 
 The registry defines the allowed query universe.
 
-QueryKit uses three registry layers:
+Joqi uses three registry layers:
 
 ```txt
 PhysicalRegistry
@@ -359,7 +359,7 @@ const policy = {
 };
 ```
 
-The resolved registry is what QueryKit actually compiles against. Queries only reference public names from the resolved registry.
+The resolved registry is what Joqi actually compiles against. Queries only reference public names from the resolved registry.
 
 ```txt
 placement.budget -> placements.budgetCents
@@ -395,7 +395,7 @@ Drizzle schema -> PhysicalRegistry
 SQLPlan -> db.execute(...)
 ```
 
-The Drizzle adapter lives in `@ypanagidis/querykit-drizzle`, not core QueryKit. It can create a `PhysicalRegistry` from Drizzle rc3 relation metadata and execute `SQLPlan` through `db.execute(...)`. Core stays ORM-agnostic and produces `SQLPlan`; adapter packages execute or translate that plan.
+The Drizzle adapter lives in `@ypanagidis/joqi-drizzle`, not core Joqi. It can create a `PhysicalRegistry` from Drizzle rc3 relation metadata and execute `SQLPlan` through `db.execute(...)`. Core stays ORM-agnostic and produces `SQLPlan`; adapter packages execute or translate that plan.
 
 For Prisma:
 
@@ -425,12 +425,12 @@ Drivers remain useful as an optional layer for business-specific specs:
 business JSON
   -> driver
   -> QuerySpec
-  -> QueryKit core
+  -> Joqi core
 ```
 
 ## Design Constraints
 
-QueryKit should not become:
+Joqi should not become:
 
 ```txt
 - a BI platform

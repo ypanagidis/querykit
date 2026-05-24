@@ -1,5 +1,4 @@
-import { Effect } from "effect";
-import type * as Either from "effect/Either";
+import { Effect, Result } from "effect";
 
 import {
   lowerQuerySpecToIREffect,
@@ -35,14 +34,14 @@ export const compileQuerySpecToSQLEffect: (
 
 export const compileQuerySpecToSQL = (input: CompileQuerySpecToSQLInput): SQLPlan =>
   unwrapCompileQuerySpecToSQLResult(
-    Effect.runSync(Effect.either(compileQuerySpecToSQLEffect(input))),
+    Effect.runSync(Effect.result(compileQuerySpecToSQLEffect(input))),
   );
 
 export const compileQuerySpecToSQLPromise = async (
   input: CompileQuerySpecToSQLInput,
 ): Promise<SQLPlan> =>
   unwrapCompileQuerySpecToSQLResult(
-    await Effect.runPromise(Effect.either(compileQuerySpecToSQLEffect(input))),
+    await Effect.runPromise(Effect.result(compileQuerySpecToSQLEffect(input))),
   );
 
 type SQLCompileContext = {
@@ -60,13 +59,13 @@ const dialectCompilers = {
 const dialectCompilerFor = (dialect: SQLDialect): SQLDialectCompiler => dialectCompilers[dialect];
 
 const unwrapCompileQuerySpecToSQLResult = (
-  result: Either.Either<SQLPlan, CompileQuerySpecToSQLError>,
+  result: Result.Result<SQLPlan, CompileQuerySpecToSQLError>,
 ): SQLPlan => {
-  if (result._tag === "Left") {
-    throw result.left;
+  if (Result.isFailure(result)) {
+    throw result.failure;
   }
 
-  return result.right;
+  return result.success;
 };
 
 const compileIRToSQL = (ir: QueryIR, compiler: SQLDialectCompiler): SQLPlan => {

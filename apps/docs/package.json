@@ -1,10 +1,13 @@
 {
-  "name": "@querykit/docs",
+  "name": "@joqi/docs",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "vite build",
     "dev": "vite dev",
+    "deploy": "pnpm run build && wrangler deploy",
+    "preview": "vite preview",
+    "cf-typegen": "wrangler types",
     "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
@@ -20,11 +23,13 @@
     "tslib": "2.8.1"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.38.0",
     "@types/mdx": "2.0.13",
     "@types/node": "25.9.1",
     "@types/react": "19.2.15",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.2",
-    "vite": "8.0.14"
+    "vite": "8.0.14",
+    "wrangler": "^4.94.0"
   }
 }

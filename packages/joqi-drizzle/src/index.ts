@@ -13,7 +13,7 @@ import {
   type PhysicalRegistry,
   type QueryRuntimeExecutor,
   type SQLPlan,
-} from "@ypanagidis/querykit";
+} from "@ypanagidis/joqi";
 
 type DrizzleColumn = {
   readonly name: string;

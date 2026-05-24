@@ -1,5 +1,4 @@
-import { Effect } from "effect";
-import type * as Either from "effect/Either";
+import { Effect, Result } from "effect";
 
 import type { JsonValue, QueryFilterOperator, QuerySortDirection } from "../specs/query.js";
 import { ResolvedRegistrySchema } from "../specs/registries.js";
@@ -113,11 +112,11 @@ export const lowerQuerySpecToIREffect: (
 });
 
 export const lowerQuerySpecToIR = (input: LowerQuerySpecInput): QueryIR =>
-  unwrapLowerQuerySpecResult(Effect.runSync(Effect.either(lowerQuerySpecToIREffect(input))));
+  unwrapLowerQuerySpecResult(Effect.runSync(Effect.result(lowerQuerySpecToIREffect(input))));
 
 export const lowerQuerySpecToIRPromise = async (input: LowerQuerySpecInput): Promise<QueryIR> =>
   unwrapLowerQuerySpecResult(
-    await Effect.runPromise(Effect.either(lowerQuerySpecToIREffect(input))),
+    await Effect.runPromise(Effect.result(lowerQuerySpecToIREffect(input))),
   );
 
 type LoweringContext = {
@@ -126,13 +125,13 @@ type LoweringContext = {
 };
 
 const unwrapLowerQuerySpecResult = (
-  result: Either.Either<QueryIR, LowerQuerySpecError>,
+  result: Result.Result<QueryIR, LowerQuerySpecError>,
 ): QueryIR => {
-  if (result._tag === "Left") {
-    throw result.left;
+  if (Result.isFailure(result)) {
+    throw result.failure;
   }
 
-  return result.right;
+  return result.success;
 };
 
 const lowerFilter = (

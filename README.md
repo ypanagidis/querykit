@@ -1,6 +1,6 @@
-# QueryKit
+# Joqi
 
-QueryKit is a registry-backed JSON query compiler for TypeScript apps.
+Joqi is a registry-backed JSON query compiler for TypeScript apps.
 
 It lets an application accept a small public JSON query shape, validate it against a trusted per-request registry, and compile it into a safe executable query plan.
 
@@ -13,7 +13,7 @@ Public JSON query
   -> adapter execution
 ```
 
-The important idea is that users and UIs query **public names**, while QueryKit compiles those names to trusted physical tables, columns, joins, and parameters from the registry.
+The important idea is that users and UIs query **public names**, while Joqi compiles those names to trusted physical tables, columns, joins, and parameters from the registry.
 
 ```txt
 public:  placement.budget
@@ -25,17 +25,17 @@ private: left join campaigns on placements.campaignId = campaigns.id, then campa
 
 ## Status
 
-QueryKit is early alpha software.
+Joqi is early alpha software.
 
 Current package:
 
 ```txt
-@ypanagidis/querykit@0.0.2-alpha.0
+@ypanagidis/joqi@0.0.2-alpha.0
 ```
 
 ## Contents
 
-- [Why QueryKit Exists](#why-querykit-exists)
+- [Why Joqi Exists](#why-joqi-exists)
 - [The Mental Model](#the-mental-model)
 - [Quick Example](#quick-example)
 - [Basic Usage](#basic-usage)
@@ -54,7 +54,7 @@ Current package:
 The package is currently published under the private `@ypanagidis` scope.
 
 ```bash
-pnpm add @ypanagidis/querykit@alpha
+pnpm add @ypanagidis/joqi@alpha
 ```
 
 For local development, clone this repo and install from the workspace:
@@ -83,7 +83,7 @@ Not implemented yet:
 - Aggregation execution semantics
 - Forensic/explain output
 
-## Why QueryKit Exists
+## Why Joqi Exists
 
 Many products eventually need some version of dynamic querying:
 
@@ -97,7 +97,7 @@ Many products eventually need some version of dynamic querying:
 
 The hard part is not just building SQL. The hard part is safely deciding what a caller is allowed to ask for.
 
-QueryKit centralizes the technical query contract:
+Joqi centralizes the technical query contract:
 
 - What sources exist?
 - Which sources are exposed publicly?
@@ -108,11 +108,11 @@ QueryKit centralizes the technical query contract:
 - What joins are needed for relation fields?
 - What maximum limits apply for this request?
 
-QueryKit is **not** an authorization framework. The host application owns business policy and row-level constraints. QueryKit provides the safe query surface and compiler machinery underneath it.
+Joqi is **not** an authorization framework. The host application owns business policy and row-level constraints. Joqi provides the safe query surface and compiler machinery underneath it.
 
 ## The Mental Model
 
-QueryKit has four core shapes.
+Joqi has four core shapes.
 
 ```txt
 PhysicalRegistry
@@ -128,7 +128,7 @@ QuerySpec
   The user's public JSON query against that resolved surface.
 ```
 
-Then QueryKit compiles the query:
+Then Joqi compiles the query:
 
 ```txt
 QuerySpec + ResolvedRegistry
@@ -259,8 +259,8 @@ No raw table names, raw column names, SQL snippets, or arbitrary joins appear in
 ## Basic Usage
 
 ```ts
-import { createQueryRuntime } from "@ypanagidis/querykit";
-import { drizzleExecutor } from "@ypanagidis/querykit-drizzle";
+import { createQueryRuntime } from "@ypanagidis/joqi";
+import { drizzleExecutor } from "@ypanagidis/joqi-drizzle";
 
 const runtime = createQueryRuntime({
   db,
@@ -317,7 +317,7 @@ import {
   lowerQuerySpecToIREffect,
   resolveRegistryEffect,
   validateQuerySpecEffect,
-} from "@ypanagidis/querykit/effect";
+} from "@ypanagidis/joqi/effect";
 
 const program = Effect.gen(function* () {
   const registry = yield* resolveRegistryEffect({
@@ -362,7 +362,7 @@ program.pipe(
 
 ## Field Paths And Derived Joins
 
-QueryKit intentionally supports dotted public field paths:
+Joqi intentionally supports dotted public field paths:
 
 ```txt
 name
@@ -384,7 +384,7 @@ For `campaign.name` to validate, all of this must be true:
 - The target field `name` exists and has the requested capability.
 - The operator is allowed for that target field when used in a filter.
 
-After validation, QueryKit derives an explicit join plan:
+After validation, Joqi derives an explicit join plan:
 
 ```ts
 {
@@ -561,7 +561,7 @@ Safety rules:
 - `contains`, `startsWith`, and `endsWith` escape `LIKE` wildcards in user input.
 - Relation joins use physical join keys from `ResolvedRelation`.
 
-The `SQLPlan` is not executed by core QueryKit. Adapter packages execute it through raw SQL APIs, for example Drizzle, Prisma, Kysely, or a direct MySQL client.
+The `SQLPlan` is not executed by core Joqi. Adapter packages execute it through raw SQL APIs, for example Drizzle, Prisma, Kysely, or a direct MySQL client.
 
 ## Running The Drizzle Examples
 
@@ -570,24 +570,24 @@ The MySQL example is the best way to see the current pipeline end to end:
 ```bash
 pnpm install
 pnpm build
-pnpm --filter @querykit/example-drizzle-mysql db:up
-pnpm --filter @querykit/example-drizzle-mysql db:push
-pnpm --filter @querykit/example-drizzle-mysql seed
-pnpm --filter @querykit/example-drizzle-mysql start
+pnpm --filter @joqi/example-drizzle-mysql db:up
+pnpm --filter @joqi/example-drizzle-mysql db:push
+pnpm --filter @joqi/example-drizzle-mysql seed
+pnpm --filter @joqi/example-drizzle-mysql start
 ```
 
-It reads the public query template from `examples/drizzle-mysql/input.json`, passes params at runtime, builds the physical registry from the Drizzle schema in `examples/drizzle-mysql/src/schema.ts`, then prints joins, the MySQL SQL plan, and validated rows. The sample includes `campaign.name`, which causes QueryKit to validate the relation and derive a join plan.
+It reads the public query template from `examples/drizzle-mysql/input.json`, passes params at runtime, builds the physical registry from the Drizzle schema in `examples/drizzle-mysql/src/schema.ts`, then prints joins, the MySQL SQL plan, and validated rows. The sample includes `campaign.name`, which causes Joqi to validate the relation and derive a join plan.
 
 There are equivalent Drizzle examples for the other SQL dialects:
 
 ```bash
-pnpm --filter @querykit/example-drizzle-postgres db:up
-pnpm --filter @querykit/example-drizzle-postgres db:push
-pnpm --filter @querykit/example-drizzle-postgres seed
-pnpm --filter @querykit/example-drizzle-postgres start
+pnpm --filter @joqi/example-drizzle-postgres db:up
+pnpm --filter @joqi/example-drizzle-postgres db:push
+pnpm --filter @joqi/example-drizzle-postgres seed
+pnpm --filter @joqi/example-drizzle-postgres start
 
-pnpm --filter @querykit/example-drizzle-sqlite seed
-pnpm --filter @querykit/example-drizzle-sqlite start
+pnpm --filter @joqi/example-drizzle-sqlite seed
+pnpm --filter @joqi/example-drizzle-sqlite start
 ```
 
 Expected shape:
@@ -619,7 +619,7 @@ pnpm build
 Project layout:
 
 ```txt
-packages/querykit
+packages/joqi
   Core package
 
 examples/drizzle-mysql
@@ -647,9 +647,9 @@ Tooling:
 - `effect` for core runtime primitives and Effect-first APIs
 - `zod` for public schema validation
 
-## What QueryKit Is Not
+## What Joqi Is Not
 
-QueryKit is not:
+Joqi is not:
 
 - a BI platform
 - a no-code backend
