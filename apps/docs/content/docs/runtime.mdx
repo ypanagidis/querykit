@@ -1,9 +1,21 @@
 ---
 title: Runtime API
-description: Use createQueryRuntime as the primary QueryKit entry point.
+description: Use createQueryRuntime as the primary Joqi entry point.
 ---
 
-Most applications should use `createQueryRuntime`. The runtime resolves the registry, validates and binds query params, lowers to IR, compiles SQL, executes through an adapter, and validates result rows.
+Most applications should use `createQueryRuntime`. It is the public API that runs the complete Joqi pipeline.
+
+```txt
+physical registry + defaults + policy
+  -> resolved registry
+  -> validate and bind query params
+  -> lower to QueryIR
+  -> compile SQLPlan
+  -> adapter executor
+  -> result row validation
+```
+
+## Create a runtime
 
 ```ts
 import { createQueryRuntime } from "@ypanagidis/querykit";
@@ -25,8 +37,65 @@ const result = await runtime.run({
 });
 ```
 
-When `explain: true` is passed, `result.explain` is typed as present and includes the resolved registry, QueryIR, and SQLPlan.
+The runtime input is deliberately adapter-neutral. Joqi only needs an executor that can run a `SQLPlan`.
+
+```ts
+type QueryRuntimeExecutor<TDb, TResult = unknown> = (input: {
+  db: TDb;
+  plan: SQLPlan;
+}) => TResult | Promise<TResult>;
+```
+
+## Run a query
+
+```ts
+const result = await runtime.run({
+  spec,
+  params,
+});
+
+console.log(result.rows);
+```
+
+Pass `explain: true` when you need to inspect the compiler pipeline.
+
+```ts
+const result = await runtime.run({
+  spec,
+  params,
+  explain: true,
+});
+
+console.log(result.explain.registry);
+console.log(result.explain.ir);
+console.log(result.explain.sqlPlan);
+```
+
+When `explain: true` is passed, `result.explain` is typed as present.
+
+## Multiple policies
+
+`createQueryRuntime` accepts `policy` for a single policy or `policies` for layered policy inputs.
+
+```ts
+const runtime = createQueryRuntime({
+  db,
+  physicalRegistry,
+  defaults,
+  policies: [basePolicy, tenantPolicy, userPolicy],
+  dialect: "postgres",
+  executor,
+});
+```
+
+Use this when the public query surface is assembled per request.
+
+## Result validation
+
+After execution, Joqi validates returned rows against the QueryIR. This catches adapter mistakes and unexpected database result shapes at the Joqi boundary.
 
 ## Runtime errors
 
 Runtime errors are not wrapped in one catch-all error. Registry failures, query validation failures, adapter execution errors, and result validation errors stay visible at their original boundary.
+
+Validation happens before execution. If params are missing or invalid, the executor is not called.

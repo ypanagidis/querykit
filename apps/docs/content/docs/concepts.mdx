@@ -1,0 +1,71 @@
+---
+title: Core Concepts
+description: Understand the four registry/query shapes that make Joqi safe.
+---
+
+Joqi is built around a small set of explicit contracts. Keep these separate and the system stays easy to reason about.
+
+```txt
+PhysicalRegistry
+  What physically exists in the database or ORM model.
+
+RegistryPolicy
+  What the application chooses to expose and how it should appear publicly.
+
+ResolvedRegistry
+  The final per-request public query surface.
+
+QuerySpec
+  The caller's public JSON query against that resolved surface.
+```
+
+Then Joqi compiles the query:
+
+```txt
+QuerySpec + ResolvedRegistry
+  -> validateQuerySpec
+  -> lowerQuerySpecToIR
+  -> compileQuerySpecToSQL
+  -> SQLPlan
+```
+
+## Physical is not public
+
+The physical registry is allowed to know real table names, schemas, columns, primary keys, relations, adapter metadata, and column types.
+
+The public query never receives those details. It only sees public source names and public field paths.
+
+## Policy is the product boundary
+
+The policy answers product questions:
+
+- Should this source be exposed?
+- What should this source be called publicly?
+- Which fields can be selected?
+- Which fields can be filtered?
+- Which operators are allowed?
+- Which relations can be traversed?
+- What is the maximum limit?
+
+This lets the same physical database support different query surfaces for different users, tenants, features, or API products.
+
+## Dotted paths are intentional
+
+Relation fields use public dotted paths such as `campaign.name`. The path is not SQL. It is a public reference that Joqi resolves through exposed relations.
+
+```txt
+select: campaign.name
+
+resolve source placement
+resolve relation campaign
+resolve target source campaign
+resolve field name
+emit required join
+select physical campaign.name
+```
+
+The SQL compiler currently emits relation joins as `left join`, so selected relation fields are treated as nullable in result validation.
+
+## Runtime is the main API
+
+The low-level functions are exported for advanced flows, but applications should normally use `createQueryRuntime`. It runs the complete pipeline and preserves the explain output when you need to inspect what happened.

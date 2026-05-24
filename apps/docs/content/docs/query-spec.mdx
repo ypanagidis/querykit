@@ -1,0 +1,111 @@
+---
+title: QuerySpec
+description: The public JSON query language accepted by Joqi.
+---
+
+`QuerySpec` is the public JSON shape. It describes query intent, not SQL.
+
+```ts
+type QuerySpec = {
+  version: "v1";
+  source: string;
+  select: string[];
+  where?: QueryFilter;
+  groupBy?: string[];
+  orderBy?: QueryOrderBy[];
+  limit?: number | { $param: string };
+  offset?: number | { $param: string };
+};
+```
+
+## Example
+
+```json
+{
+  "version": "v1",
+  "source": "placement",
+  "select": ["name", "status", "budget", "campaign.name"],
+  "where": {
+    "and": [
+      { "field": "status", "op": "eq", "value": { "$param": "status" } },
+      { "field": "budget", "op": "gte", "value": { "$param": "minBudget" } }
+    ]
+  },
+  "orderBy": [{ "field": "budget", "direction": "desc" }],
+  "limit": { "$param": "limit" }
+}
+```
+
+## Source
+
+`source` is a public source name from the resolved registry. It is not the physical table name unless your policy exposes it that way.
+
+## Select
+
+`select` is a non-empty list of public field paths. A field must be selectable. Relation fields use public dotted paths.
+
+```json
+["name", "status", "budget", "campaign.name"]
+```
+
+## Filters
+
+Filters can be nested with `and` and `or`.
+
+```json
+{
+  "and": [
+    { "field": "status", "op": "eq", "value": "active" },
+    {
+      "or": [
+        { "field": "budget", "op": "gte", "value": 10000 },
+        { "field": "campaign.name", "op": "contains", "value": "spring" }
+      ]
+    }
+  ]
+}
+```
+
+Supported operators:
+
+- `eq`
+- `neq`
+- `gt`
+- `gte`
+- `lt`
+- `lte`
+- `in`
+- `contains`
+- `startsWith`
+- `endsWith`
+- `isNull`
+- `isNotNull`
+
+Each field can restrict which operators are allowed. For example, a numeric field can allow `gte`, while an enum field can allow only `eq` and `in`.
+
+## Sorting
+
+`orderBy` uses public field paths and `asc` or `desc`.
+
+```json
+[{ "field": "budget", "direction": "desc" }]
+```
+
+The field must be sortable in the resolved registry.
+
+## Limits and offsets
+
+`limit` and `offset` can be literal non-negative integers or `$param` references.
+
+```json
+{
+  "limit": { "$param": "limit" },
+  "offset": { "$param": "offset" }
+}
+```
+
+The resolved source can define `defaultLimit` and `maxLimit`. Query validation applies those bounds before execution.
+
+## What is intentionally missing
+
+`QuerySpec` has no place for raw SQL, table names, column names, arbitrary functions, or arbitrary joins. Those must come from the trusted registry and compiler.

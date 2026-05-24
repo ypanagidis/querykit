@@ -1,0 +1,77 @@
+---
+title: SQL Dialects
+description: Compile public queries into MySQL, PostgreSQL, or SQLite SQL plans.
+---
+
+Joqi compiles to an adapter-neutral `SQLPlan`.
+
+```ts
+type SQLDialect = "mysql" | "postgres" | "sqlite";
+
+type SQLPlan = {
+  dialect: SQLDialect;
+  sql: string;
+  params: readonly JsonValue[];
+};
+```
+
+The SQL text is not intended for string interpolation. Values stay in `params` and adapters bind them.
+
+## MySQL
+
+MySQL uses backtick identifiers and `?` placeholders.
+
+```ts
+const runtime = createQueryRuntime({
+  db,
+  physicalRegistry,
+  defaults,
+  policy,
+  dialect: "mysql",
+  executor: drizzleExecutor(),
+});
+```
+
+## PostgreSQL
+
+PostgreSQL uses double-quoted identifiers and numbered placeholders.
+
+```ts
+const runtime = createQueryRuntime({
+  db,
+  physicalRegistry,
+  defaults,
+  policy,
+  dialect: "postgres",
+  executor: drizzleExecutor(),
+});
+```
+
+Placeholder example:
+
+```sql
+where "placements"."status" = $1
+```
+
+## SQLite
+
+SQLite uses double-quoted identifiers and `?` placeholders.
+
+```ts
+const runtime = createQueryRuntime({
+  db,
+  physicalRegistry,
+  defaults,
+  policy,
+  dialect: "sqlite",
+  executor: drizzleExecutor(),
+});
+```
+
+## Identifier safety
+
+Identifiers are never taken from the public query directly. The public query names are resolved to physical identifiers through the registry first. The SQL compiler only quotes identifiers from that resolved registry.
+
+## Params
+
+SQL values are always params. Joqi does not inline user values into SQL text.

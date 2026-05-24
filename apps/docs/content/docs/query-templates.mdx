@@ -1,9 +1,13 @@
 ---
 title: Query Templates
-description: Keep public JSON queries reusable by binding params at runtime.
+description: Store reusable public queries and bind request values at runtime.
 ---
 
-QueryKit supports parameter references with `$param`. This lets you store a query template once and run it with different request values.
+Joqi supports parameter references with `$param`. This lets you save a query once and run it with different request values.
+
+Templates are useful for saved reports, dashboard cards, exports, and product-owned data views.
+
+## Template
 
 ```json
 {
@@ -21,6 +25,10 @@ QueryKit supports parameter references with `$param`. This lets you store a quer
 }
 ```
 
+The template contains no request-specific values. It only names required params.
+
+## Runtime values
+
 ```ts
 await runtime.run({
   spec: reportTemplate,
@@ -33,4 +41,22 @@ await runtime.run({
 });
 ```
 
-Missing params fail validation before the executor is called. Filter params are checked against the resolved field type, and `limit` or `offset` params must be non-negative integers.
+Missing params fail validation before the executor is called.
+
+## Validation rules
+
+- A `$param` ref must be exactly `{ "$param": "name" }` with no extra properties.
+- Filter params are checked against the resolved field type.
+- `limit` and `offset` params must be non-negative integers.
+- `in` params must be non-empty arrays.
+- Missing params fail before SQL compilation and execution.
+
+## Why params are separate
+
+Separating templates from values gives you stable JSON contracts:
+
+- Store a template in a database.
+- Review or approve templates before users run them.
+- Reuse one template across tenants or dashboards.
+- Bind user input only at request time.
+- Keep SQL params bound through the adapter instead of interpolating values.

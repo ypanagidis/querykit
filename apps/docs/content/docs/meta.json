@@ -1,4 +1,18 @@
 {
-  "title": "QueryKit",
-  "pages": ["index", "runtime", "query-templates"]
+  "title": "Joqi",
+  "pages": [
+    "index",
+    "quickstart",
+    "concepts",
+    "registry",
+    "query-spec",
+    "query-templates",
+    "runtime",
+    "drizzle",
+    "sql-dialects",
+    "errors-safety",
+    "advanced-apis",
+    "effect",
+    "examples"
+  ]
 }

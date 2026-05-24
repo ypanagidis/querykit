@@ -1,0 +1,91 @@
+---
+title: Examples
+description: Run the included MySQL, PostgreSQL, and SQLite Drizzle examples.
+---
+
+The repository includes working Drizzle examples for all supported SQL dialects.
+
+```txt
+examples/drizzle-mysql
+examples/drizzle-postgres
+examples/drizzle-sqlite
+```
+
+Each example uses the same shape:
+
+```txt
+src/db/schema.ts   Drizzle tables and relations
+src/db/seed.ts     Example data
+src/registry.ts    Joqi defaults and policy
+src/index.ts       Runtime query execution
+input.json         Public query template
+```
+
+## Runtime flow
+
+The examples create a runtime and bind params at execution time.
+
+```ts
+const runtime = createQueryRuntime({
+  db,
+  physicalRegistry: physical,
+  defaults,
+  policy,
+  dialect: "sqlite",
+  executor: drizzleExecutor(),
+});
+
+const result = await runtime.run({
+  spec: input.query,
+  params: {
+    status: "active",
+    minBudget: 10000,
+    campaignName: "spring",
+    limit: 25,
+  },
+  explain: true,
+});
+```
+
+The example output includes joins, the SQL plan, and rows.
+
+## SQLite
+
+SQLite is the fastest local smoke test because it does not need Docker.
+
+```bash
+pnpm --filter @querykit/example-drizzle-sqlite start
+```
+
+Node may print an experimental SQLite warning depending on your runtime version.
+
+## MySQL
+
+The MySQL example expects a local MySQL database configured by the example package.
+
+```bash
+pnpm --filter @querykit/example-drizzle-mysql start
+```
+
+## PostgreSQL
+
+The PostgreSQL example expects a local PostgreSQL database on the normal `5432` port.
+
+```bash
+pnpm --filter @querykit/example-drizzle-postgres start
+```
+
+## Expected row shape
+
+The seeded examples return rows like this:
+
+```json
+{
+  "name": "Homepage Hero",
+  "status": "active",
+  "budget": 15000,
+  "campaign.name": "Spring Launch"
+}
+```
+
+Notice that output keys use public field names, not physical column names.

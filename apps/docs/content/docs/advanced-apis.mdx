@@ -1,0 +1,81 @@
+---
+title: Advanced APIs
+description: Use lower-level compiler stages when you need inspection or customization.
+---
+
+The runtime is a small wrapper over lower-level APIs. Use these directly when you need to inspect or customize individual stages.
+
+```ts
+import {
+  compileQuerySpecToSQL,
+  lowerQuerySpecToIR,
+  parseQuerySpec,
+  resolveRegistry,
+  validateQuerySpec,
+} from "@ypanagidis/querykit";
+
+const query = parseQuerySpec(spec);
+const registry = resolveRegistry({ physical, defaults, policy });
+const validatedQuery = validateQuerySpec({ query, registry, params });
+const ir = lowerQuerySpecToIR({ query: validatedQuery, registry, params });
+const sqlPlan = compileQuerySpecToSQL({
+  query: validatedQuery,
+  registry,
+  dialect: "postgres",
+});
+```
+
+## Schemas
+
+All public schemas are exported for advanced validation flows.
+
+```ts
+import { QuerySpecSchema, ResolvedRegistrySchema } from "@ypanagidis/querykit";
+
+const queryResult = QuerySpecSchema.safeParse(input);
+const registryResult = ResolvedRegistrySchema.safeParse(registry);
+```
+
+## QueryIR
+
+`QueryIR` is an adapter-neutral intermediate representation. It contains resolved physical refs and deduplicated joins.
+
+```ts
+type QueryIR = {
+  kind: "select";
+  source: QueryIRSourceRef;
+  select: QueryIRFieldRef[];
+  joins: QueryIRJoin[];
+  where?: QueryIRFilter;
+  groupBy: QueryIRFieldRef[];
+  orderBy: QueryIROrderBy[];
+  limit?: number;
+  offset?: number;
+};
+```
+
+## SQLPlan
+
+The SQL compiler emits SQL text plus bound params.
+
+```ts
+type SQLPlan = {
+  dialect: "mysql" | "postgres" | "sqlite";
+  sql: string;
+  params: readonly JsonValue[];
+};
+```
+
+Use `compileQuerySpecToSQL` if you need a SQL plan without executing it.
+
+## Result schemas
+
+Joqi can build and run result schemas from QueryIR.
+
+```ts
+import { parseQueryIRResultRows } from "@ypanagidis/querykit";
+
+const rows = parseQueryIRResultRows(ir, adapterResult);
+```
+
+Runtime users normally get this automatically after executor output is returned.

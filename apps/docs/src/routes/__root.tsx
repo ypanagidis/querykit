@@ -8,13 +8,14 @@ import "../styles.css";
 
 export const Route = createRootRoute({
   head: () => ({
+    links: [{ rel: "icon", type: "image/svg+xml", href: "/favicon.svg" }],
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "QueryKit Docs" },
+      { title: "Joqi Docs" },
       {
         name: "description",
-        content: "Documentation for QueryKit, a registry-backed JSON query compiler.",
+        content: "Documentation for Joqi, a registry-backed JSON query compiler.",
       },
     ],
   }),
