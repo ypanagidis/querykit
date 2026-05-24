@@ -1,6 +1,6 @@
 {
   "name": "joqi-monorepo",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "description": "Monorepo for Joqi packages, apps, and examples.",
   "license": "MIT",

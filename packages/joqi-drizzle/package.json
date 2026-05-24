@@ -1,6 +1,6 @@
 {
   "name": "@ypanagidis/joqi-drizzle",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Drizzle execution adapter for Joqi SQL plans.",
   "license": "MIT",
   "files": [

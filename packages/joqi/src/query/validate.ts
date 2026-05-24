@@ -183,9 +183,11 @@ export const validateQuerySpecEffect: (
     const source = registry.sources[query.source];
 
     if (source === undefined) {
-      return yield* Effect.fail(new QueryValidationError({
-        issues: [{ code: "unknown_source", source: query.source }],
-      }));
+      return yield* Effect.fail(
+        new QueryValidationError({
+          issues: [{ code: "unknown_source", source: query.source }],
+        }),
+      );
     }
 
     validateLimit(query, source, issues);
