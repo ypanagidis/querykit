@@ -39,6 +39,15 @@ export const JsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
   z.union([JsonScalarSchema, z.array(JsonValueSchema), z.record(z.string(), JsonValueSchema)]),
 );
 
+const JsonLiteralValueSchema = JsonValueSchema.refine(
+  (value) =>
+    value === null ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    !Object.hasOwn(value, "$param"),
+  { message: "Use {$param: string} without additional properties for parameter refs" },
+);
+
 export type QueryParamRef = z.infer<typeof QueryParamRefSchema>;
 
 export type QueryValue = JsonValue | QueryParamRef;
@@ -47,7 +56,7 @@ export type QueryParams = Record<string, JsonValue>;
 
 export type QueryLimitValue = number | QueryParamRef;
 
-const QueryValueSchema = z.union([QueryParamRefSchema, JsonValueSchema]);
+const QueryValueSchema = z.union([QueryParamRefSchema, JsonLiteralValueSchema]);
 
 const QueryLimitValueSchema = z.union([z.number().int().nonnegative(), QueryParamRefSchema]);
 

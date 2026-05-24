@@ -295,6 +295,17 @@ Omit `dialect` to use MySQL. With `explain: true`, the runtime includes the reso
 
 The SQL string uses trusted identifiers from the resolved registry. User values are emitted as bound params.
 
+Because params are supplied separately, the public query can be saved as a reusable template and run with different request values:
+
+```ts
+const reportTemplate = await loadQueryTemplate("active-placement-report");
+
+const result = await runtime.run({
+  spec: reportTemplate,
+  params: request.query,
+});
+```
+
 ## Effect API
 
 The core pipeline is Effect-first. Sync and promise helpers are convenience facades.

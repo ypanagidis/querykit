@@ -30,56 +30,22 @@ pnpm add @ypanagidis/querykit@alpha
 
 ## Usage
 
-```ts
-import {
-  createQueryRuntime,
-  parseQuerySpec,
-  parsePhysicalRegistry,
-  parseRegistryDefaults,
-  parseRegistryPolicy,
-  parseResolvedRegistry,
-  resolveRegistry,
-  resolveRegistryPromise,
-  validateQuerySpec,
-  lowerQuerySpecToIR,
-  compileQuerySpecToSQL,
-} from "@ypanagidis/querykit";
+Most applications should use `createQueryRuntime`. The runtime resolves the
+registry, validates and binds query params, lowers to IR, compiles SQL, executes
+through an adapter, and validates result rows.
 
-const query = parseQuerySpec({
+```ts
+import { createQueryRuntime } from "@ypanagidis/querykit";
+import { drizzleExecutor } from "@ypanagidis/querykit-drizzle";
+
+const spec = {
   version: "v1",
   source: "placement",
   select: ["name", "budget"],
-  where: { field: "budget", op: "gte", value: 10000 },
+  where: { field: "budget", op: "gte", value: { $param: "minBudget" } },
   orderBy: [{ field: "budget", direction: "desc" }],
-  limit: 50,
-});
-
-const resolved = resolveRegistry({
-  physical,
-  defaults,
-  policies: [basePolicy, rolePolicy],
-});
-
-const resolvedAsync = await resolveRegistryPromise({
-  physical,
-  defaults,
-  policies: [basePolicy, rolePolicy],
-});
-
-const validatedQuery = validateQuerySpec({
-  query,
-  registry: resolved,
-});
-
-const ir = lowerQuerySpecToIR({
-  query: validatedQuery,
-  registry: resolved,
-});
-
-const sqlPlan = compileQuerySpecToSQL({
-  query: validatedQuery,
-  registry: resolved,
-});
+  limit: { $param: "limit" },
+};
 
 const runtime = createQueryRuntime({
   db,
@@ -87,32 +53,94 @@ const runtime = createQueryRuntime({
   defaults,
   policy,
   dialect: "mysql",
-  executor,
+  executor: drizzleExecutor(),
 });
 
 const result = await runtime.run({
-  spec: query,
+  spec,
   params: {
     minBudget: 10000,
     limit: 50,
   },
   explain: true,
 });
+
+console.log(result.rows);
+console.log(result.explain.sqlPlan);
 ```
 
-The resolver is implemented as an Effect and exposed from the Effect subpath:
+When `explain: true` is passed, `result.explain` is typed as present and includes
+the resolved registry, `QueryIR`, and `SQLPlan`. Omit `explain` for just rows.
+
+## Runtime Errors
+
+`runtime.run(...)` does not wrap every failure in one catch-all error. It keeps
+stage errors visible so callers can handle the right boundary:
+
+- Registry parsing/resolution failures throw `RegistryParseError` or `RegistryResolutionError`.
+- Query parsing/validation failures throw `QueryParseError` or `QueryValidationError`.
+- Missing `$param` values and invalid param types are `QueryValidationError` issues.
+- Adapter execution failures are thrown by the configured executor. For Drizzle, `drizzleExecutor()` uses `DrizzleExecutionError` from `@ypanagidis/querykit-drizzle`.
+- Result row validation failures come from the result schema parser.
+
+Validation happens before execution. If params are missing or invalid, the
+executor is not called.
+
+## Advanced APIs
+
+The runtime is a small wrapper over lower-level APIs. Use these directly when you
+need to inspect or customize individual compiler stages.
+
+```ts
+import {
+  compileQuerySpecToSQL,
+  lowerQuerySpecToIR,
+  parseQuerySpec,
+  resolveRegistry,
+  validateQuerySpec,
+} from "@ypanagidis/querykit";
+
+const query = parseQuerySpec(spec);
+const registry = resolveRegistry({ physical, defaults, policy });
+const validatedQuery = validateQuerySpec({ query, registry, params });
+const ir = lowerQuerySpecToIR({ query: validatedQuery, registry, params });
+const sqlPlan = compileQuerySpecToSQL({ query: validatedQuery, registry, dialect: "postgres" });
+```
+
+All schemas are also exported directly for advanced validation flows:
+
+```ts
+import { QuerySpecSchema, ResolvedRegistrySchema } from "@ypanagidis/querykit";
+
+const result = QuerySpecSchema.safeParse(input);
+```
+
+## Effect API
+
+The core pipeline is Effect-first. Sync and promise helpers are convenience facades.
+The Effect APIs are exposed from the Effect subpath:
 
 ```ts
 import { Effect } from "effect";
-import { resolveRegistryEffect } from "@ypanagidis/querykit/effect";
+import {
+  compileQuerySpecToSQLEffect,
+  lowerQuerySpecToIREffect,
+  resolveRegistryEffect,
+  validateQuerySpecEffect,
+} from "@ypanagidis/querykit/effect";
 
-const program = resolveRegistryEffect({
-  physical,
-  defaults,
-  policies: [basePolicy, rolePolicy],
+const program = Effect.gen(function* () {
+  const registry = yield* resolveRegistryEffect({ physical, defaults, policy });
+  const validatedQuery = yield* validateQuerySpecEffect({ query, registry, params });
+  const ir = yield* lowerQuerySpecToIREffect({ query: validatedQuery, registry, params });
+  const sqlPlan = yield* compileQuerySpecToSQLEffect({
+    query: validatedQuery,
+    registry,
+    dialect: "postgres",
+  });
+
+  return { registry, validatedQuery, ir, sqlPlan };
 });
-
-const resolved = await Effect.runPromise(program);
 ```
 
 Resolver failures are Effect-native tagged errors:
@@ -126,27 +154,11 @@ program.pipe(
 );
 ```
 
-Query validation has the same Effect-first shape:
+## QueryIR And SQLPlan
 
-```ts
-import { validateQuerySpecEffect } from "@ypanagidis/querykit/effect";
+Query lowering validates the query, resolves public paths to physical field refs,
+and emits deduplicated joins. The current IR is adapter-neutral:
 
-const validatedQuery = await Effect.runPromise(
-  validateQuerySpecEffect({ query, registry: resolved }),
-);
-```
-
-Query lowering validates the query, resolves public paths to physical field refs, and emits deduplicated joins:
-
-```ts
-import { lowerQuerySpecToIREffect } from "@ypanagidis/querykit/effect";
-
-const ir = await Effect.runPromise(
-  lowerQuerySpecToIREffect({ query, registry: resolved }),
-);
-```
-
-The current IR is adapter-neutral:
 
 ```ts
 type QueryIR = {
@@ -162,15 +174,8 @@ type QueryIR = {
 };
 ```
 
-The SQL compiler returns raw SQL plus bound params. It defaults to MySQL and can also emit PostgreSQL or SQLite SQL:
-
-```ts
-import { compileQuerySpecToSQLEffect } from "@ypanagidis/querykit/effect";
-
-const sqlPlan = await Effect.runPromise(
-  compileQuerySpecToSQLEffect({ query, registry: resolved, dialect: "postgres" }),
-);
-```
+The SQL compiler returns raw SQL plus bound params. It defaults to MySQL and can
+also emit PostgreSQL or SQLite SQL:
 
 ```ts
 type SQLDialect = "mysql" | "postgres" | "sqlite";
@@ -180,14 +185,6 @@ type SQLPlan = {
   sql: string;
   params: readonly JsonValue[];
 };
-```
-
-All schemas are also exported directly for advanced validation flows:
-
-```ts
-import { QuerySpecSchema, ResolvedRegistrySchema } from "@ypanagidis/querykit";
-
-const result = QuerySpecSchema.safeParse(input);
 ```
 
 ## Core Contracts
@@ -217,6 +214,44 @@ It should describe query intent, not raw SQL:
 The query schema should not expose raw table names, raw column names, raw SQL fragments, or arbitrary function names.
 
 `$param` references are bound from `params` during validation, before SQL compilation. Missing params fail validation; filter params are checked against the resolved field type; params used for `limit` or `offset` must be non-negative integers.
+
+### Saved Query Templates
+
+Because params are supplied separately, a query can be saved as reusable JSON and
+run with different request values:
+
+```ts
+const activePlacementReport = await loadQueryTemplate("active-placement-report");
+
+const result = await runtime.run({
+  spec: activePlacementReport,
+  params: {
+    status: "active",
+    minBudget: 10000,
+    campaignName: "spring",
+    limit: 25,
+  },
+  explain: true,
+});
+```
+
+The template stays stable:
+
+```json
+{
+  "version": "v1",
+  "source": "placement",
+  "select": ["name", "status", "budget", "campaign.name"],
+  "where": {
+    "and": [
+      { "field": "status", "op": "eq", "value": { "$param": "status" } },
+      { "field": "budget", "op": "gte", "value": { "$param": "minBudget" } },
+      { "field": "campaign.name", "op": "contains", "value": { "$param": "campaignName" } }
+    ]
+  },
+  "limit": { "$param": "limit" }
+}
+```
 
 ### Field Paths And Derived Joins
 

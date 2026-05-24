@@ -1,0 +1,81 @@
+import { describe, expect, it } from "vitest";
+
+import * as effectApi from "../src/effect.js";
+import * as publicApi from "../src/index.js";
+
+describe("public API", () => {
+  it("exports the stable runtime surface", () => {
+    expect(Object.keys(publicApi).sort()).toEqual([
+      "AdapterMetaSchema",
+      "AggregationSchema",
+      "ExposureModeSchema",
+      "FieldDefaultsSchema",
+      "FieldPolicySchema",
+      "FieldTypeSchema",
+      "JsonValueSchema",
+      "PhysicalFieldSchema",
+      "PhysicalRegistrySchema",
+      "PhysicalRelationSchema",
+      "PhysicalSourceKindSchema",
+      "PhysicalSourceSchema",
+      "QueryFilterOperatorSchema",
+      "QueryFilterSchema",
+      "QueryOrderBySchema",
+      "QueryParamRefSchema",
+      "QueryParamsSchema",
+      "QueryParseError",
+      "QuerySortDirectionSchema",
+      "QuerySpecSchema",
+      "QueryValidationError",
+      "QueryValidationIssueSchema",
+      "QueryVersionSchema",
+      "RegistryDefaultsSchema",
+      "RegistryParseError",
+      "RegistryPolicySchema",
+      "RegistryResolutionError",
+      "RegistryResolutionIssueSchema",
+      "RegistryVersionSchema",
+      "RelationDefaultsSchema",
+      "RelationKindSchema",
+      "RelationPolicySchema",
+      "ResolvedFieldSchema",
+      "ResolvedRegistrySchema",
+      "ResolvedRelationSchema",
+      "ResolvedSourceSchema",
+      "SourceDefaultsSchema",
+      "SourcePolicySchema",
+      "buildQueryIRResultSchema",
+      "buildQueryIRRowSchema",
+      "compileQuerySpecToSQL",
+      "compileQuerySpecToSQLEffect",
+      "compileQuerySpecToSQLPromise",
+      "createQueryRuntime",
+      "lowerQuerySpecToIR",
+      "lowerQuerySpecToIREffect",
+      "lowerQuerySpecToIRPromise",
+      "parsePhysicalRegistry",
+      "parseQueryIRResultRows",
+      "parseQuerySpec",
+      "parseRegistryDefaults",
+      "parseRegistryPolicy",
+      "parseResolvedRegistry",
+      "queryKitVersion",
+      "resolveRegistry",
+      "resolveRegistryEffect",
+      "resolveRegistryPromise",
+      "safeParsePhysicalRegistry",
+      "safeParseQueryIRResultRows",
+      "safeParseQuerySpec",
+      "safeParseRegistryDefaults",
+      "safeParseRegistryPolicy",
+      "safeParseResolvedRegistry",
+      "validateQuerySpec",
+      "validateQuerySpecEffect",
+      "validateQuerySpecPromise",
+    ]);
+  });
+
+  it("keeps the effect subpath aligned with the root API", () => {
+    expect(Object.keys(effectApi).sort()).toEqual(Object.keys(publicApi).sort());
+  });
+});

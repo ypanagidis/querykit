@@ -36,6 +36,26 @@ describe("QuerySpecSchema", () => {
     });
   });
 
+  it("parses parameterized filters and pagination", () => {
+    expect(
+      parseQuerySpec({
+        version: "v1",
+        source: "placement",
+        select: ["name"],
+        where: { field: "budget", op: "gte", value: { $param: "minBudget" } },
+        limit: { $param: "limit" },
+        offset: { $param: "offset" },
+      }),
+    ).toEqual({
+      version: "v1",
+      source: "placement",
+      select: ["name"],
+      where: { field: "budget", op: "gte", value: { $param: "minBudget" } },
+      limit: { $param: "limit" },
+      offset: { $param: "offset" },
+    });
+  });
+
   it("rejects empty selects", () => {
     expect(
       safeParseQuerySpec({
@@ -53,6 +73,17 @@ describe("QuerySpecSchema", () => {
         source: "placement",
         select: ["name"],
         where: { field: "name", op: "raw", value: "x" },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects malformed parameter refs", () => {
+    expect(
+      safeParseQuerySpec({
+        version: "v1",
+        source: "placement",
+        select: ["name"],
+        where: { field: "name", op: "eq", value: { $param: "name", extra: true } },
       }).success,
     ).toBe(false);
   });

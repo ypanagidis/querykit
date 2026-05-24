@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createQueryRuntime, resolveRegistry } from "../src/index.js";
+import { createQueryRuntime, QueryValidationError, resolveRegistry } from "../src/index.js";
 import type { SQLPlan } from "../src/index.js";
 
 describe("createQueryRuntime", () => {
@@ -36,6 +36,95 @@ describe("createQueryRuntime", () => {
     expect(result.rows).toEqual([{ name: "Homepage Hero", budget: 15000 }]);
     expect(result.explain.sqlPlan).toEqual(executedPlan);
     expect(result.explain.ir.joins).toEqual([]);
+  });
+
+  it("omits explain output unless requested", async () => {
+    const runtime = createQueryRuntime({
+      db: {},
+      physicalRegistry,
+      defaults,
+      policy,
+      executor: () => [{ name: "Homepage Hero" }],
+    });
+
+    await expect(
+      runtime.run({
+        spec: {
+          version: "v1",
+          source: "placement",
+          select: ["name"],
+        },
+      }),
+    ).resolves.toEqual({ rows: [{ name: "Homepage Hero" }] });
+  });
+
+  it("rejects rows that do not match the selected result schema", async () => {
+    const runtime = createQueryRuntime({
+      db: {},
+      physicalRegistry,
+      defaults,
+      policy,
+      executor: () => [{ name: null }],
+    });
+
+    await expect(
+      runtime.run({
+        spec: {
+          version: "v1",
+          source: "placement",
+          select: ["name"],
+        },
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("fails validation before executing when params are missing", async () => {
+    const calls: SQLPlan[] = [];
+    const runtime = createQueryRuntime({
+      db: {},
+      physicalRegistry,
+      defaults,
+      policy,
+      executor: ({ plan }) => {
+        calls.push(plan);
+        return [];
+      },
+    });
+
+    await expect(
+      runtime.run({
+        spec: {
+          version: "v1",
+          source: "placement",
+          select: ["name"],
+          where: { field: "budget", op: "gte", value: { $param: "minBudget" } },
+        },
+      }),
+    ).rejects.toBeInstanceOf(QueryValidationError);
+    expect(calls).toEqual([]);
+  });
+
+  it("passes executor failures through to the caller", async () => {
+    const cause = new Error("database unavailable");
+    const runtime = createQueryRuntime({
+      db: {},
+      physicalRegistry,
+      defaults,
+      policy,
+      executor: () => {
+        throw cause;
+      },
+    });
+
+    await expect(
+      runtime.run({
+        spec: {
+          version: "v1",
+          source: "placement",
+          select: ["name"],
+        },
+      }),
+    ).rejects.toBe(cause);
   });
 });
 

@@ -149,6 +149,33 @@ describe("compileQuerySpecToSQL", () => {
     expect(plan.params).toEqual(["spring%", "active", "paused"]);
   });
 
+  it("compiles null and empty-list predicates deterministically", () => {
+    const plan = compileQuerySpecToSQL({
+      query: {
+        version: "v1",
+        source: "placement",
+        select: ["name"],
+        where: {
+          and: [
+            { field: "status", op: "eq", value: null },
+            { field: "name", op: "neq", value: null },
+            { field: "status", op: "in", value: [] },
+          ],
+        },
+      },
+      registry: makeRegistry(),
+    });
+
+    expect(plan.sql).toBe(
+      [
+        "select `t0`.`name` as `name`",
+        "from `placements` as `t0`",
+        "where (`t0`.`status` is null) and (`t0`.`name` is not null) and (`t0`.`status` in (null))",
+      ].join("\n"),
+    );
+    expect(plan.params).toEqual([]);
+  });
+
   it("binds query param refs before SQL compilation", () => {
     const plan = compileQuerySpecToSQL({
       query: {
@@ -201,6 +228,48 @@ describe("compileQuerySpecToSQL", () => {
       ].join("\n"),
     );
     expect(plan.params).toEqual(["%100\\%\\_ready%"]);
+  });
+
+  it("quotes physical identifiers from the registry", () => {
+    const plan = compileQuerySpecToSQL({
+      query: {
+        version: "v1",
+        source: "placement",
+        select: ["label"],
+      },
+      registry: resolveRegistry({
+        physical: {
+          version: "v1",
+          sources: {
+            "placements`archive": {
+              kind: "table",
+              name: "placements`archive",
+              fields: {
+                "display`name": { type: "string", nullable: false },
+              },
+            },
+          },
+        },
+        policies: [
+          {
+            version: "v1",
+            sources: {
+              "placements`archive": {
+                expose: true,
+                exposeAs: "placement",
+                fields: {
+                  "display`name": { expose: true, exposeAs: "label" },
+                },
+              },
+            },
+          },
+        ],
+      }),
+    });
+
+    expect(plan.sql).toBe(
+      ["select `t0`.`display``name` as `label`", "from `placements``archive` as `t0`"].join("\n"),
+    );
   });
 
   it("provides Effect and promise facades", async () => {
@@ -283,8 +352,12 @@ const makeRegistry = () =>
             expose: true,
             exposeAs: "placement",
             fields: {
-              name: { expose: true, filterable: true, operators: ["contains", "startsWith"] },
-              status: { expose: true, filterable: true, operators: ["in", "isNotNull"] },
+              name: {
+                expose: true,
+                filterable: true,
+                operators: ["neq", "contains", "startsWith"],
+              },
+              status: { expose: true, filterable: true, operators: ["eq", "in", "isNotNull"] },
               budgetCents: {
                 expose: true,
                 exposeAs: "budget",

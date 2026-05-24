@@ -236,6 +236,24 @@ describe("Drizzle SQLPlan execution", () => {
     await expect(drizzleExecutor()({ db: { all }, plan: makeSqlitePlan() })).resolves.toEqual(rows);
   });
 
+  it("normalizes PostgreSQL row objects for the runtime executor", async () => {
+    const rows = [{ name: "Spring Placement" }];
+    const execute = vi.fn(async () => ({ rows }));
+
+    await expect(drizzleExecutor()({ db: { execute }, plan: makePostgresPlan() })).resolves.toEqual(
+      rows,
+    );
+  });
+
+  it("requires execute(...) or all(...) for runtime execution", async () => {
+    await expect(drizzleExecutor()({ db: {}, plan: makePlan() })).rejects.toMatchObject({
+      name: "DrizzleExecutionError",
+      cause: expect.objectContaining({
+        message: "Drizzle executor must provide execute(...) or all(...)",
+      }),
+    });
+  });
+
   it("wraps execution failures in DrizzleExecutionError", async () => {
     const cause = new Error("database unavailable");
 
