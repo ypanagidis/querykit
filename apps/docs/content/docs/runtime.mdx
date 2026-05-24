@@ -1,0 +1,32 @@
+---
+title: Runtime API
+description: Use createQueryRuntime as the primary QueryKit entry point.
+---
+
+Most applications should use `createQueryRuntime`. The runtime resolves the registry, validates and binds query params, lowers to IR, compiles SQL, executes through an adapter, and validates result rows.
+
+```ts
+import { createQueryRuntime } from "@ypanagidis/querykit";
+import { drizzleExecutor } from "@ypanagidis/querykit-drizzle";
+
+const runtime = createQueryRuntime({
+  db,
+  physicalRegistry,
+  defaults,
+  policy,
+  dialect: "mysql",
+  executor: drizzleExecutor(),
+});
+
+const result = await runtime.run({
+  spec,
+  params,
+  explain: true,
+});
+```
+
+When `explain: true` is passed, `result.explain` is typed as present and includes the resolved registry, QueryIR, and SQLPlan.
+
+## Runtime errors
+
+Runtime errors are not wrapped in one catch-all error. Registry failures, query validation failures, adapter execution errors, and result validation errors stay visible at their original boundary.

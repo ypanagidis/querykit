@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": false,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "exactOptionalPropertyTypes": false,
+    "incremental": false,
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "noEmit": true,
+    "paths": {
+      "collections/*": ["./.source/*"]
+    },
+    "rootDirs": [".", "./.source"],
+    "types": ["node", "vite/client"],
+    "verbatimModuleSyntax": false
+  },
+  "include": ["src", "content", "source.config.ts", "vite.config.ts", ".source"]
+}

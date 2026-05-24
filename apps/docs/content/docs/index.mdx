@@ -1,0 +1,22 @@
+---
+title: QueryKit
+description: Registry-backed JSON queries for TypeScript applications.
+---
+
+QueryKit lets an application accept a small public JSON query shape, validate it against a trusted registry, and compile it into a safe executable query plan.
+
+```txt
+Public JSON query
+  + ResolvedRegistry
+  -> validated query
+  -> QueryIR
+  -> SQLPlan
+  -> adapter execution
+```
+
+Users and UIs query public names such as `placement.budget`. QueryKit resolves those names to trusted physical tables, columns, joins, and parameters from your registry.
+
+## Current packages
+
+- `@ypanagidis/querykit` is the core runtime and compiler.
+- `@ypanagidis/querykit-drizzle` creates registries from Drizzle metadata and executes SQL plans.
