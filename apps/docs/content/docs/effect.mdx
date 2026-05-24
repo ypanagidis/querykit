@@ -1,0 +1,52 @@
+---
+title: Effect APIs
+description: Use the Effect-first compiler pipeline directly.
+---
+
+The core pipeline is Effect-first. Promise and sync helpers are convenience facades.
+
+Effect APIs are exposed from the Effect subpath.
+
+```ts
+import { Effect } from "effect";
+import {
+  compileQuerySpecToSQLEffect,
+  lowerQuerySpecToIREffect,
+  resolveRegistryEffect,
+  validateQuerySpecEffect,
+} from "@ypanagidis/querykit/effect";
+
+const program = Effect.gen(function* () {
+  const registry = yield* resolveRegistryEffect({ physical, defaults, policy });
+  const validatedQuery = yield* validateQuerySpecEffect({ query, registry, params });
+  const ir = yield* lowerQuerySpecToIREffect({ query: validatedQuery, registry, params });
+  const sqlPlan = yield* compileQuerySpecToSQLEffect({
+    query: validatedQuery,
+    registry,
+    dialect: "postgres",
+  });
+
+  return { registry, validatedQuery, ir, sqlPlan };
+});
+```
+
+## Tagged errors
+
+Joqi uses Effect-native tagged errors. You can recover by tag.
+
+```ts
+const handled = program.pipe(
+  Effect.catchTags({
+    RegistryParseError: (error) => Effect.succeed(error.error),
+    RegistryResolutionError: (error) => Effect.succeed(error.issues),
+    QueryParseError: (error) => Effect.succeed(error.error),
+    QueryValidationError: (error) => Effect.succeed(error.issues),
+  }),
+);
+```
+
+## When to use Effect APIs
+
+Use the Effect APIs when your application already uses Effect for dependency injection, tracing, retries, typed errors, or concurrency.
+
+Use `createQueryRuntime` when you want the simplest application API.

@@ -6,10 +6,11 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "build": "pnpm --filter './packages/*' build",
+    "build": "pnpm --filter './packages/*' build && pnpm --filter @querykit/docs build",
     "dev": "pnpm --filter @ypanagidis/querykit dev",
-    "format": "oxfmt -c oxfmt.config.ts 'apps/**/*.ts' 'examples/**/*.ts' 'packages/**/*.ts' '*.json' '*.ts' '*.yaml' 'apps/**/*.json' 'examples/**/*.json' 'packages/**/*.json'",
-    "format:check": "oxfmt -c oxfmt.config.ts --check 'apps/**/*.ts' 'examples/**/*.ts' 'packages/**/*.ts' '*.json' '*.ts' '*.yaml' 'apps/**/*.json' 'examples/**/*.json' 'packages/**/*.json'",
+    "dev:docs": "pnpm --filter @querykit/docs dev",
+    "format": "oxfmt -c oxfmt.config.ts 'apps/**/*.ts' 'apps/**/*.tsx' '!apps/docs/.source/**/*.ts' '!apps/docs/src/routeTree.gen.ts' 'examples/**/*.ts' 'packages/**/*.ts' '*.json' '*.ts' '*.yaml' 'apps/**/*.json' 'examples/**/*.json' 'packages/**/*.json'",
+    "format:check": "oxfmt -c oxfmt.config.ts --check 'apps/**/*.ts' 'apps/**/*.tsx' '!apps/docs/.source/**/*.ts' '!apps/docs/src/routeTree.gen.ts' 'examples/**/*.ts' 'packages/**/*.ts' '*.json' '*.ts' '*.yaml' 'apps/**/*.json' 'examples/**/*.json' 'packages/**/*.json'",
     "lint": "oxlint -c oxlint.config.ts --type-aware",
     "lint:fix": "oxlint -c oxlint.config.ts --type-aware --fix",
     "pack:querykit": "pnpm --filter @ypanagidis/querykit pack",
@@ -17,7 +18,7 @@
     "publish:alpha": "pnpm --filter @ypanagidis/querykit publish --tag alpha",
     "publish:latest": "pnpm --filter @ypanagidis/querykit publish --tag latest",
     "test": "pnpm --filter './packages/*' test",
-    "typecheck": "pnpm --filter @ypanagidis/querykit build && pnpm --filter './packages/*' typecheck"
+    "typecheck": "pnpm --filter @ypanagidis/querykit build && pnpm --filter './packages/*' typecheck && pnpm --filter @querykit/docs typecheck"
   },
   "devDependencies": {
     "@effect/language-service": "0.86.2",
@@ -30,5 +31,14 @@
     "typescript": "5.9.3",
     "vitest": "3.2.4"
   },
-  "packageManager": "pnpm@10.12.1"
+  "packageManager": "pnpm@10.12.1",
+  "pnpm": {
+    "packageExtensions": {
+      "react-remove-scroll@*": {
+        "dependencies": {
+          "tslib": "2.8.1"
+        }
+      }
+    }
+  }
 }

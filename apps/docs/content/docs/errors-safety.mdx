@@ -1,0 +1,51 @@
+---
+title: Errors and Safety
+description: Understand validation boundaries, failure types, and the safety model.
+---
+
+Joqi is designed so untrusted query JSON is validated before it can become executable SQL.
+
+## Safety model
+
+- Public JSON never contains raw SQL.
+- Public JSON never contains physical table or column names unless policy exposes those exact names.
+- Relation traversal must be exposed by policy.
+- Operators must be allowed by the resolved field.
+- Params must be present and type-compatible.
+- SQL values are passed as bound params.
+- SQL identifiers come from the trusted resolved registry.
+
+## What Joqi does not do
+
+Joqi is not an authorization framework. Your application still owns:
+
+- Authentication.
+- Tenant isolation.
+- Row-level authorization.
+- Business-specific access rules.
+- Auditing and rate limiting.
+
+A common pattern is to build the `policy` per request, then add tenant or ownership constraints at the application boundary.
+
+## Runtime failure stages
+
+`runtime.run(...)` keeps stage errors visible instead of wrapping every failure in one generic error.
+
+- Registry parsing and resolution throw `RegistryParseError` or `RegistryResolutionError`.
+- Query parsing and validation throw `QueryParseError` or `QueryValidationError`.
+- Missing `$param` values and invalid param types are query validation issues.
+- Adapter execution failures are thrown by the configured executor.
+- Drizzle execution failures are wrapped in `DrizzleExecutionError`.
+- Result row validation failures come from the result schema parser.
+
+## Validation before execution
+
+If validation fails, the executor is not called. That includes missing params, invalid param values, disallowed fields, disallowed operators, and invalid relation paths.
+
+## Recommended production boundaries
+
+- Treat `spec` and `params` as untrusted request input.
+- Create `physicalRegistry` from trusted app code or adapter metadata.
+- Create `policy` from trusted app code, user role, tenant settings, or product configuration.
+- Keep `defaults.exposure` as `deny-by-default` unless your physical registry is already curated.
+- Log `explain.sqlPlan` only in trusted logs, because it contains physical identifiers.

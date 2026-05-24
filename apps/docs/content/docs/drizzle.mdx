@@ -1,0 +1,81 @@
+---
+title: Drizzle Adapter
+description: Generate physical registries from Drizzle metadata and execute SQL plans with Drizzle.
+---
+
+`@ypanagidis/querykit-drizzle` is the first ORM adapter. It does two things:
+
+```txt
+Drizzle schema + relations -> PhysicalRegistry
+SQLPlan -> Drizzle SQL object -> db.execute(...) or db.all(...)
+```
+
+It does not compile Joqi into Drizzle query-builder calls. Core Joqi compiles a `QuerySpec` into a `SQLPlan`; the adapter turns that plan into Drizzle SQL and executes it.
+
+## Create a physical registry
+
+```ts
+import { createPhysicalRegistryFromDrizzle } from "@ypanagidis/querykit-drizzle";
+
+const physical = createPhysicalRegistryFromDrizzle({
+  schema,
+  relations: (r) => ({
+    placements: {
+      campaign: r.one.campaigns({
+        from: r.placements.campaignId,
+        to: r.campaigns.id,
+      }),
+    },
+  }),
+});
+```
+
+If you already have `defineRelations(...)` output, use `createPhysicalRegistryFromDrizzleRelations`.
+
+```ts
+import { createPhysicalRegistryFromDrizzleRelations } from "@ypanagidis/querykit-drizzle";
+
+const physical = createPhysicalRegistryFromDrizzleRelations(relations);
+```
+
+The adapter reads table names, schemas, columns, primary keys, enum values, and relation metadata from Drizzle.
+
+## Execute through Drizzle
+
+```ts
+import { createQueryRuntime } from "@ypanagidis/querykit";
+import { drizzleExecutor } from "@ypanagidis/querykit-drizzle";
+
+const runtime = createQueryRuntime({
+  db,
+  physicalRegistry: physical,
+  defaults,
+  policy,
+  dialect: "sqlite",
+  executor: drizzleExecutor(),
+});
+```
+
+The executor supports database objects with `execute(...)` or SQLite-style `all(...)`.
+
+```ts
+type DrizzleExecutor<TResult = unknown> = {
+  execute?: (query: SQL) => TResult | Promise<TResult>;
+  all?: (query: SQL) => TResult | Promise<TResult>;
+};
+```
+
+## Placeholder handling
+
+The adapter preserves bound params:
+
+- MySQL and SQLite `?` placeholders become `sql.param(...)` chunks.
+- PostgreSQL `$1`, `$2`, ... placeholders become ordered `sql.param(...)` chunks.
+
+## Result normalization
+
+Different Drizzle drivers return different result shapes. `drizzleExecutor()` normalizes common MySQL, PostgreSQL, and SQLite shapes into plain rows before Joqi validates them.
+
+## Errors
+
+Execution failures are wrapped in `DrizzleExecutionError` with the attempted SQL text and original cause.

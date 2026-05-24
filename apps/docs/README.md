@@ -1,3 +1,7 @@
 # QueryKit Docs
 
-Documentation app placeholder. Framework choice is intentionally deferred.
+Documentation app built with TanStack Start and Fumadocs MDX.
+
+```bash
+pnpm dev:docs
+```

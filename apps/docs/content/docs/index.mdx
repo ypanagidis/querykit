@@ -1,0 +1,64 @@
+---
+title: Joqi
+description: A safe public query layer for TypeScript applications.
+---
+
+Joqi is a registry-backed JSON query compiler for TypeScript apps. It lets a product accept a small public query shape from a UI, saved report, dashboard widget, or API client without exposing raw SQL, table names, column names, or arbitrary joins.
+
+```txt
+Public JSON query
+  + ResolvedRegistry
+  -> validated query
+  -> QueryIR
+  -> SQLPlan
+  -> adapter execution
+```
+
+The important idea is separation of names:
+
+```txt
+public:  placement.budget
+private: placements.budgetCents
+
+public:  placement.campaign.name
+private: left join campaigns on placements.campaignId = campaigns.id, then campaigns.name
+```
+
+Users and UIs query public names. Joqi resolves those names through a trusted per-request registry, validates what is allowed, binds params, compiles a SQL plan, executes through an adapter, and validates the returned rows.
+
+## Why it exists
+
+Dynamic querying appears in most products eventually:
+
+- Admin tables
+- Saved reports
+- Dashboard widgets
+- Exports
+- Client-facing data grids
+- API-driven filtering and sorting
+
+The hard part is not string-building SQL. The hard part is deciding what a caller is allowed to ask for. Joqi centralizes that query contract.
+
+## What Joqi owns
+
+- Which sources are available to a caller.
+- Which fields are public, and what their public names are.
+- Which fields can be selected, filtered, sorted, or grouped.
+- Which operators are allowed per field.
+- Which relations can be traversed.
+- Which joins are needed for public relation paths.
+- Which limit defaults and maximums apply.
+
+Joqi is not an authorization framework. Your application still owns user identity, tenant isolation, row-level constraints, and business policy. Joqi owns the safe public query surface underneath those decisions.
+
+## Current packages
+
+- `@ypanagidis/querykit` is the core runtime and compiler.
+- `@ypanagidis/querykit-drizzle` creates registries from Drizzle metadata and executes SQL plans.
+
+## Start here
+
+- [Quickstart](/docs/quickstart) walks through installation and the smallest runtime setup.
+- [Core Concepts](/docs/concepts) explains the mental model.
+- [Registry Design](/docs/registry) shows how physical database facts become a public query surface.
+- [Runtime API](/docs/runtime) covers the main API you should use in applications.
