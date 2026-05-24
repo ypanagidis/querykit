@@ -13,13 +13,16 @@
     "lint": "oxlint -c oxlint.config.ts --type-aware",
     "lint:fix": "oxlint -c oxlint.config.ts --type-aware --fix",
     "pack:querykit": "pnpm --filter @ypanagidis/querykit pack",
+    "prepare": "effect-language-service patch",
     "publish:alpha": "pnpm --filter @ypanagidis/querykit publish --tag alpha",
     "publish:latest": "pnpm --filter @ypanagidis/querykit publish --tag latest",
     "test": "pnpm --filter @ypanagidis/querykit test",
     "typecheck": "pnpm --filter @ypanagidis/querykit typecheck"
   },
   "devDependencies": {
+    "@effect/language-service": "^0.86.2",
     "@typescript/native-preview": "7.0.0-dev.20260523.1",
+    "effect-solutions": "^0.5.3",
     "oxfmt": "^0.51.0",
     "oxlint": "^1.66.0",
     "oxlint-tsgolint": "^0.23.0",

@@ -28,6 +28,75 @@ The package is currently private under the `@ypanagidis` npm scope.
 pnpm add @ypanagidis/querykit@alpha
 ```
 
+## Usage
+
+```ts
+import {
+  parseQuerySpec,
+  parsePhysicalRegistry,
+  parseRegistryDefaults,
+  parseRegistryPolicy,
+  parseResolvedRegistry,
+  resolveRegistry,
+  resolveRegistryPromise,
+} from "@ypanagidis/querykit";
+
+const query = parseQuerySpec({
+  version: "v1",
+  source: "placement",
+  select: ["name", "budget"],
+  where: { field: "budget", op: "gte", value: 10000 },
+  orderBy: [{ field: "budget", direction: "desc" }],
+  limit: 50,
+});
+
+const resolved = resolveRegistry({
+  physical,
+  defaults,
+  policies: [basePolicy, rolePolicy],
+});
+
+const resolvedAsync = await resolveRegistryPromise({
+  physical,
+  defaults,
+  policies: [basePolicy, rolePolicy],
+});
+```
+
+The resolver is implemented as an Effect and exposed from the Effect subpath:
+
+```ts
+import { Effect } from "effect";
+import { resolveRegistryEffect } from "@ypanagidis/querykit/effect";
+
+const program = resolveRegistryEffect({
+  physical,
+  defaults,
+  policies: [basePolicy, rolePolicy],
+});
+
+const resolved = await Effect.runPromise(program);
+```
+
+Resolver failures are Effect-native tagged errors:
+
+```ts
+program.pipe(
+  Effect.catchTags({
+    RegistryParseError: (error) => Effect.succeed(error.error),
+    RegistryResolutionError: (error) => Effect.succeed(error.issues),
+  }),
+);
+```
+
+All schemas are also exported directly for advanced validation flows:
+
+```ts
+import { QuerySpecSchema, ResolvedRegistrySchema } from "@ypanagidis/querykit";
+
+const result = QuerySpecSchema.safeParse(input);
+```
+
 ## Core Contracts
 
 ### Query Schema
@@ -169,9 +238,9 @@ Prisma object-query compilation can be added later for the subset Prisma can rep
 
 ## Current Alpha
 
-The current alpha has intentionally been reset to a minimal registry-first placeholder surface.
+The current alpha exposes the public Zod schema layer for `QuerySpec`, `PhysicalRegistry`, `RegistryPolicy`, `RegistryDefaults`, and `ResolvedRegistry`.
 
-The next implementation should build this pipeline:
+The next implementation should build the runtime pipeline around these contracts:
 
 ```txt
 QuerySpecSchema.parse

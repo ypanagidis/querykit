@@ -1,16 +1,28 @@
 {
+  "$schema": "https://raw.githubusercontent.com/Effect-TS/language-service/refs/heads/main/schema.json",
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2022"],
-    "module": "ESNext",
+    "module": "Preserve",
     "moduleResolution": "Bundler",
+    "moduleDetection": "force",
     "strict": true,
     "exactOptionalPropertyTypes": true,
     "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noImplicitOverride": true,
+    "incremental": true,
+    "composite": true,
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
     "verbatimModuleSyntax": true,
-    "skipLibCheck": true
+    "rewriteRelativeImportExtensions": true,
+    "skipLibCheck": true,
+    "plugins": [
+      {
+        "name": "@effect/language-service"
+      }
+    ]
   }
 }
