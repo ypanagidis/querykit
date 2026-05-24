@@ -9,5 +9,5 @@ export default defineConfig({
   format: ["esm"],
   sourcemap: true,
   clean: true,
-  external: ["effect"],
+  external: [],
 });

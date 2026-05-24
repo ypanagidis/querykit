@@ -1,783 +1,708 @@
-# Design Spec: `QueryKit` — Driver-Based Dynamic Query Runtime
+# Design Spec: QueryKit — Registry-Backed JSON Query Compiler
 
 ## 1. Summary
 
-`QueryKit` is an npm package for building dynamic, JSON-driven data features without mixing business logic into the core query engine.
+QueryKit is an embeddable TypeScript library for validating JSON query specs against a trusted registry and compiling them into safe executable query representations.
 
-The package provides:
+The core idea is simple:
 
 ```txt
-- Strong driver interface
-- Internal neutral query shape
-- Query plan schema
-- Query compiler
+untrusted JSON query
+  + trusted resolved registry
+  -> validated query
+  -> QueryIR
+  -> adapter executable
+```
+
+QueryKit should provide:
+
+```txt
+- Standard query schema
+- Standard registry schema
+- Physical registry generation from ORM/schema metadata
+- Registry policy layer for user customization
+- Per-request resolved registry
+- Registry-aware query validation
+- QueryIR normalization
+- Adapter compiler contracts
 - Drizzle adapter
-- Generated physical registry from Drizzle schema
-- Builder manifest contracts for frontend UI builders
-- Forensic / explain tracing
-- Promise API for normal TypeScript users
-- Effect API for Effect users
+- Prisma adapter path
+- Builder manifest contracts
+- Forensic/explain tracing
+- Promise API
+- Effect API
 ```
 
-The key principle:
+The strongest architectural boundary is:
 
 ```txt
-Business domains own business rules.
-QueryKit owns technical query execution.
+Host applications decide what is exposed.
+QueryKit validates and compiles only what the resolved registry allows.
+Adapters translate QueryIR into executable backend-specific queries.
 ```
 
-A business domain can define its own driver for things like:
+Business-specific drivers are optional. They sit above QueryKit and translate domain-specific specs into QueryKit's standard query schema.
+
+---
+
+## 2. Core Problem
+
+Many apps repeatedly implement the same technical query work:
 
 ```txt
-- Docgen template mappings
-- Dynamic dashboards
-- External API reports
-- Admin table views
-- Exports
-- Alerts
+- Validate query input
+- Resolve allowed fields
+- Apply filters
+- Join related tables
+- Aggregate values
+- Sort and paginate
+- Execute SQL
+- Format rows
+- Debug wrong numbers
+- Explain why a field/filter is rejected
+```
+
+This appears in:
+
+```txt
+- Admin tables
 - Saved reports
+- Dashboard widgets
+- Exports
+- Document mappings
+- External API reports
 - Client portal pages
 ```
 
-Each driver translates its own business-specific JSON spec into a neutral query plan that QueryKit can compile and execute.
+The goal is not to centralize all business logic.
+
+The goal is to centralize the safe technical query contract.
 
 ---
 
-# 2. Core Problem
+## 3. Non-Goals
 
-Today, many systems hardcode:
-
-```txt
-- Dashboard widgets
-- Report fields
-- Table columns
-- Document mappings
-- Export formats
-- Filter bars
-- Chart configs
-- API response shapes
-- Alert rules
-```
-
-This leads to repeated code across apps and domains.
-
-For example:
-
-```txt
-Skyflow dashboards
-Symphony One dashboards
-External API v2 reports
-Docgen mappings
-Admin tables
-Exports
-```
-
-all contain different versions of the same technical work:
-
-```txt
-- Validate input
-- Resolve allowed fields
-- Build queries
-- Apply filters
-- Join tables
-- Aggregate metrics
-- Execute SQL
-- Format output
-- Debug wrong numbers
-```
-
-The goal is not to centralize all business rules.
-
-The goal is to centralize the technical query runtime.
-
----
-
-# 3. Non-Goals
-
-QueryKit is **not**:
+QueryKit is not:
 
 ```txt
 - A full BI platform
-- A no-code backend for everything
-- A replacement for business code
+- A no-code backend
+- An ORM
+- A GraphQL server
+- A REST server
 - A public SQL builder
-- A generic business rules engine
-- A replacement for Drizzle
-- A replacement for domain-specific drivers
+- A SQL-in-JSON language
+- An authorization framework
+- A replacement for Drizzle or Prisma
 ```
 
-QueryKit should not know what “Finlandia”, “Skyflow”, “Symphony One”, “Meta Ads”, “Google Ads”, or “client-visible field” means.
+QueryKit should not know what concepts like “client-visible”, “Finlandia”, “Skyflow”, “Meta Ads”, or “role X can see margin” mean.
 
-Those concepts belong in drivers.
+Those concepts belong in host application policy, registry policies, mandatory constraints, or optional business drivers.
 
 ---
 
-# 4. High-Level Architecture
+## 4. High-Level Architecture
 
 ```txt
-JSON spec / API request / saved template
+ORM / database schema
         ↓
-Business driver
+Adapter introspection
         ↓
-Business validation + planning
+PhysicalRegistry
+        +
+Engine defaults
+        +
+RegistryPolicy from code/db/UI
+        +
+Request context
         ↓
-Neutral QueryPlan
+ResolvedRegistry
+        +
+Unknown JSON query
         ↓
-QueryKit runtime
+QuerySpecSchema.parse
         ↓
-Compiler / Drizzle adapter
+Registry-aware validation
         ↓
-Database
+QueryIR
         ↓
-Driver renderer
+Adapter compiler
         ↓
-Final payload
+Adapter execution
+        ↓
+Rows + explain trace
 ```
 
-The business driver owns:
+The host application owns:
 
 ```txt
-- Allowed fields
-- Allowed params
-- Allowed combinations
-- Permissions
-- Metric formulas
-- Source selection
-- Business-specific validation
-- Output shape
+- Which physical sources are exposed
+- Public field names
+- Labels and descriptions
+- Per-source and per-field capabilities
+- Tenant/user/role-specific policy
+- Mandatory row constraints
+- Business-specific transforms into QuerySpec
+- Final application response shape
 ```
 
 QueryKit owns:
 
 ```txt
-- Query plan schema
-- Query compilation
+- Standard query schema
+- Standard registry schemas
+- Registry resolution
+- Registry-aware query validation
+- QueryIR lowering
+- Adapter compiler contracts
 - Parameter binding
-- Execution
-- Projection
+- Execution hooks
 - Tracing
 - Explain output
-- Registry generation
 ```
 
----
-
-# 5. Package Structure
-
-Recommended package exports:
+Adapters own:
 
 ```txt
-@ypanagidis/querykit
-@ypanagidis/querykit/effect
-@ypanagidis/querykit/drizzle
-@ypanagidis/querykit/drizzle-effect
-@ypanagidis/querykit/codegen
-@ypanagidis/querykit/react
-```
-
-## 5.1 `@ypanagidis/querykit`
-
-Default Promise-based API.
-
-For normal TypeScript users.
-
-Exports:
-
-```ts
-defineDriver
-createQueryRuntime
-QueryPlan
-LoweredQuery
-QueryExpression
-BuilderManifest
-ExplainTrace
-q
-```
-
-## 5.2 `@ypanagidis/querykit/effect`
-
-Effect-native API.
-
-Exports:
-
-```ts
-defineEffectDriver
-createEffectQueryRuntime
-QueryRuntime
-QueryEngine
-DriverRegistry
-RunDriverError
-Effect services/layers
-```
-
-## 5.3 `@ypanagidis/querykit/drizzle`
-
-Promise-based Drizzle adapter.
-
-Exports:
-
-```ts
-createDrizzleEngine
-compileQueryPlanToDrizzle
-executeDrizzleQuery
-```
-
-## 5.4 `@ypanagidis/querykit/drizzle-effect`
-
-Effect-native Drizzle adapter.
-
-Exports:
-
-```ts
-DrizzleQueryEngineLive
-makeDrizzleQueryEngine
-```
-
-## 5.5 `@ypanagidis/querykit/codegen`
-
-Physical registry generator.
-
-Exports:
-
-```ts
-defineQueryKitConfig
-generatePhysicalRegistry
-generateRegistryTypes
-```
-
-CLI:
-
-```bash
-querykit generate
-querykit inspect
-querykit validate
-querykit explain
-```
-
-## 5.6 `@ypanagidis/querykit/react`
-
-Frontend builder helper contracts.
-
-Exports:
-
-```ts
-BuilderManifestSchema
-validateSpecAgainstManifest
-createBuilderState
-```
-
-React components should be optional. The important part is the builder manifest contract.
-
----
-
-# 6. Core Runtime Flow
-
-```ts
-const runtime = createQueryRuntime({
-  engine,
-  drivers: [
-    docgenDriver,
-    dashboardDriver,
-    performanceReportDriver,
-  ],
-});
-
-const result = await runtime.run({
-  driver: "docgen",
-  spec,
-  context: {
-    userId,
-    organizationId,
-  },
-  explain: true,
-});
-```
-
-Result:
-
-```ts
-type RunResult<TOutput> = {
-  data: TOutput;
-  trace?: ExplainTrace;
-};
+- ORM/schema introspection into PhysicalRegistry
+- QueryIR compilation into adapter executable form
+- Adapter-specific execution
+- Adapter-specific row normalization
 ```
 
 ---
 
-# 7. Driver Interface
+## 5. Core Contracts
 
-## 7.1 Promise-Based Driver
+QueryKit has two primary public contracts:
 
-```ts
-type QueryDriver<TSpec, TPlan, TOutput> = {
-  key: string;
-  version: string;
-
-  parse: (input: unknown) => TSpec;
-
-  authorize?: (
-    ctx: DriverContext,
-    spec: TSpec,
-  ) => Promise<void> | void;
-
-  plan: (
-    ctx: DriverContext,
-    spec: TSpec,
-  ) => Promise<TPlan> | TPlan;
-
-  lower: (
-    ctx: DriverContext,
-    plan: TPlan,
-  ) => Promise<LoweredQuery[]> | LoweredQuery[];
-
-  render: (
-    ctx: DriverContext,
-    args: {
-      spec: TSpec;
-      plan: TPlan;
-      results: QueryResultSet[];
-      trace: ExplainTrace;
-    },
-  ) => Promise<TOutput> | TOutput;
-
-  getBuilderManifest?: (
-    ctx: DriverContext,
-  ) => Promise<BuilderManifest> | BuilderManifest;
-};
+```txt
+1. QuerySpecSchema
+2. Registry schemas
 ```
+
+Everything else exists to parse, validate, resolve, lower, compile, execute, or explain those contracts.
+
+---
+
+## 6. Query Spec Schema
+
+The query spec is the public JSON contract accepted by QueryKit.
+
+It describes query intent, not SQL syntax.
 
 Example:
 
-```ts
-export const docgenDriver = defineDriver({
-  key: "docgen",
-  version: "v1",
-
-  parse(input) {
-    return DocgenSpecSchema.parse(input);
+```json
+{
+  "version": "v1",
+  "source": "placement",
+  "select": ["name", "status", "budget", "campaign.name"],
+  "where": {
+    "and": [
+      { "field": "status", "op": "eq", "value": "active" },
+      { "field": "budget", "op": "gte", "value": 10000 }
+    ]
   },
-
-  plan(ctx, spec) {
-    return buildDocgenPlan(ctx, spec);
-  },
-
-  lower(ctx, plan) {
-    return lowerDocgenPlanToQueries(ctx, plan);
-  },
-
-  render(ctx, { plan, results }) {
-    return buildPlaceholderPayload(plan, results);
-  },
-});
-```
-
----
-
-## 7.2 Effect-Based Driver
-
-Effect users should get an Effect-native interface.
-
-```ts
-type EffectQueryDriver<TSpec, TPlan, TOutput, R = never> = {
-  key: string;
-  version: string;
-
-  parse: (
-    input: unknown,
-  ) => Effect.Effect<TSpec, InvalidSpecError, R>;
-
-  authorize?: (
-    ctx: DriverContext,
-    spec: TSpec,
-  ) => Effect.Effect<void, AuthorizationError, R>;
-
-  plan: (
-    ctx: DriverContext,
-    spec: TSpec,
-  ) => Effect.Effect<TPlan, PlanningError, R>;
-
-  lower: (
-    ctx: DriverContext,
-    plan: TPlan,
-  ) => Effect.Effect<LoweredQuery[], LoweringError, R>;
-
-  render: (
-    ctx: DriverContext,
-    args: {
-      spec: TSpec;
-      plan: TPlan;
-      results: QueryResultSet[];
-      trace: ExplainTrace;
-    },
-  ) => Effect.Effect<TOutput, RenderError, R>;
-
-  getBuilderManifest?: (
-    ctx: DriverContext,
-  ) => Effect.Effect<BuilderManifest, never, R>;
-};
-```
-
-Effect should be the internal power-user/runtime layer, but non-Effect users should never be forced to touch it.
-
----
-
-# 8. Internal Runtime Strategy
-
-Recommended implementation:
-
-```txt
-Effect runtime internally
-Promise facade externally
-```
-
-This avoids maintaining two independent runtimes.
-
-The Promise API can wrap the Effect runtime:
-
-```ts
-export function createQueryRuntime(config: RuntimeConfig) {
-  const effectRuntime = createEffectQueryRuntime(config);
-
-  return {
-    async run(input) {
-      return Effect.runPromise(effectRuntime.run(input));
-    },
-
-    async explain(input) {
-      return Effect.runPromise(effectRuntime.explain(input));
-    },
-
-    async getBuilderManifest(input) {
-      return Effect.runPromise(effectRuntime.getBuilderManifest(input));
-    },
-  };
+  "orderBy": [{ "field": "budget", "direction": "desc" }],
+  "limit": 50
 }
 ```
 
-Do **not** build two separate implementations:
-
-```txt
-Bad:
-PromiseRuntime.ts
-EffectRuntime.ts
-```
-
-Prefer:
-
-```txt
-Good:
-EffectRuntime.ts
-PromiseFacade.ts
-```
-
----
-
-# 9. Lowered Query Model
-
-Drivers lower business plans into one or more `LoweredQuery` objects.
+Initial TypeScript shape:
 
 ```ts
-type LoweredQuery =
-  | {
-      kind: "query-plan";
-      id: string;
-      plan: QueryPlan;
-      params: Record<string, unknown>;
-    }
-  | {
-      kind: "trusted-sql";
-      id: string;
-      sql: unknown;
-      params?: Record<string, unknown>;
-      outputColumns?: string[];
-    };
-```
-
-## 9.1 Why support `trusted-sql`?
-
-Some existing reports are too complex to immediately model as neutral query plans.
-
-For example:
-
-```txt
-- External API v2 performance reports
-- Finlandia-style reports
-- Historical correction queries
-- Heavy analytical CTE queries
-```
-
-These can initially lower to `trusted-sql`.
-
-Important rule:
-
-```txt
-Only server-side trusted drivers can emit trusted SQL.
-User JSON can never emit trusted SQL.
-```
-
----
-
-# 10. Neutral Query Plan
-
-Initial `QueryPlan` should be intentionally small.
-
-```ts
-type QueryPlan = {
-  kind: "query-plan";
-
-  from: QuerySource;
-
-  joins?: QueryJoin[];
-
-  select: QuerySelectItem[];
-
-  where?: QueryExpression;
-
-  groupBy?: QueryExpression[];
-
-  orderBy?: QueryOrderBy[];
-
+type QuerySpec = {
+  version: "v1";
+  source: string;
+  select: string[];
+  where?: QueryFilter;
+  groupBy?: string[];
+  orderBy?: Array<{
+    field: string;
+    direction: "asc" | "desc";
+  }>;
   limit?: number;
-
   offset?: number;
 };
 ```
 
-Example:
-
-```ts
-const plan: QueryPlan = {
-  kind: "query-plan",
-
-  from: {
-    table: "placements",
-    alias: "p",
-  },
-
-  select: [
-    {
-      alias: "placement_name",
-      expr: q.column("p", "name"),
-    },
-    {
-      alias: "budget",
-      expr: q.column("p", "budget"),
-    },
-  ],
-
-  where: q.eq(
-    q.column("p", "status"),
-    q.param("status"),
-  ),
-
-  orderBy: [
-    {
-      expr: q.column("p", "budget"),
-      direction: "desc",
-    },
-  ],
-
-  limit: 100,
-};
-```
-
----
-
-# 11. Query Expression Helpers
-
-The package should provide helpers for constructing valid query expressions.
-
-```ts
-q.column("p", "name")
-q.param("status")
-q.literal(100)
-q.eq(left, right)
-q.in(left, right)
-q.gte(left, right)
-q.lte(left, right)
-q.and([...])
-q.or([...])
-q.sum(expr)
-q.count(expr)
-q.avg(expr)
-q.divide(left, right)
-q.multiply([...])
-```
-
-Example:
-
-```ts
-const cpm = q.multiply([
-  q.divide(
-    q.column("delivery", "spent"),
-    q.column("delivery", "impressions"),
-  ),
-  q.literal(1000),
-]);
-```
-
----
-
-# 12. Query Plan Schema
-
-The internal query shape should be schema-backed.
-
-If using Effect internally, prefer Effect Schema.
-
-But drivers should be allowed to use any schema library.
-
-Recommended rule:
+Field references are public registry paths:
 
 ```txt
-QueryKit internal schemas use Effect Schema.
-Project drivers may use Zod, Effect Schema, Valibot, or custom parse functions.
+name
+budget
+campaign.name
+client.organization.name
 ```
 
-This avoids forcing Effect on non-Effect users.
+The query schema must not allow:
+
+```txt
+- Raw table names
+- Raw column names
+- Raw SQL fragments
+- Arbitrary function names
+- Arbitrary joins
+- Arbitrary relation conditions
+```
+
+Zod validates the JSON shape.
+
+Registry validation checks semantic correctness:
+
+```txt
+- Does source exist?
+- Does field exist?
+- Is field selectable?
+- Is field filterable?
+- Is operator valid for this field?
+- Is value type compatible?
+- Is relation traversal allowed?
+- Is relation depth allowed?
+- Is limit within bounds?
+```
 
 ---
 
-# 13. Physical Registry Generation
+## 7. Registry Model
 
-QueryKit should generate a **physical registry** from Drizzle schema.
+QueryKit uses three registry layers:
 
-This registry contains technical database facts only.
+```txt
+PhysicalRegistry
+  generated from ORM/schema metadata
+
+RegistryPolicy
+  user-authored allowlist and customization layer
+
+ResolvedRegistry
+  per-request effective registry used by validation and compilation
+```
+
+This gives QueryKit two important properties:
+
+```txt
+- The physical schema can be generated automatically.
+- The public query surface can be curated safely.
+```
+
+---
+
+## 8. Physical Registry
+
+The physical registry contains technical facts only.
+
+It is generated by adapters from ORM/schema metadata.
 
 ```ts
 type PhysicalRegistry = {
-  tables: Record<string, PhysicalTable>;
+  sources: Record<string, PhysicalSource>;
 };
 
-type PhysicalTable = {
-  id: string;
-  tsName: string;
-  dbName: string;
-  columns: Record<string, PhysicalColumn>;
-  primaryKey: string[];
-  relations: Record<string, PhysicalRelation>;
+type PhysicalSource = {
+  kind: "table" | "view" | "model";
+  name: string;
+  schema?: string;
+  primaryKey?: string[];
+  fields: Record<string, PhysicalField>;
+  relations?: Record<string, PhysicalRelation>;
+  adapterMeta?: Record<string, unknown>;
 };
 
-type PhysicalColumn = {
-  tsName: string;
-  dbName: string;
-  valueType: "string" | "number" | "boolean" | "date" | "json" | "unknown";
+type PhysicalField = {
+  type: "string" | "number" | "boolean" | "date" | "datetime" | "json" | "enum" | "unknown";
   nullable: boolean;
+  enumValues?: string[];
+  adapterMeta?: Record<string, unknown>;
 };
 
-type PhysicalRelation =
-  | {
-      kind: "many-to-one";
-      alias: string;
-      fromTable: string;
-      toTable: string;
-      fromColumn: string;
-      toColumn: string;
-    }
-  | {
-      kind: "one-to-many";
-      alias: string;
-      fromTable: string;
-      toTable: string;
-      fromColumn: string;
-      toColumn: string;
-    };
+type PhysicalRelation = {
+  kind: "one" | "many";
+  target: string;
+  localFields: string[];
+  foreignFields: string[];
+  nullable?: boolean;
+  adapterMeta?: Record<string, unknown>;
+};
 ```
 
-The physical registry does **not** decide:
+The physical registry does not decide:
 
 ```txt
 - Visibility
 - Labels
-- Business permissions
-- Allowed fields
+- Permissions
+- Public field names
 - Allowed filters
+- Allowed sorts
+- Allowed aggregates
 - Client-facing availability
 ```
 
 It only says:
 
 ```txt
-- This table exists
-- This column exists
+- This source exists
+- This field exists
 - This relation exists
-- This is the DB column name
+- This is the physical name
 - This is the inferred value type
+- This is nullable or not
 ```
 
 ---
 
-# 14. Codegen Config
+## 9. Registry Policy
+
+The registry policy decides what is exposed and how it is named.
+
+It is plain data, so it can come from:
+
+```txt
+- TypeScript code
+- JSON config
+- Database rows
+- Codegen output
+- A future QueryKit UI
+```
+
+Shape:
+
+```ts
+type RegistryPolicy = {
+  sources?: Record<string, SourcePolicy>;
+};
+
+type SourcePolicy = {
+  expose?: boolean;
+  exposeAs?: string;
+  label?: string;
+  description?: string;
+  maxLimit?: number;
+  defaultLimit?: number;
+  fields?: Record<string, FieldPolicy>;
+  relations?: Record<string, RelationPolicy>;
+};
+
+type FieldPolicy = {
+  expose?: boolean;
+  exposeAs?: string;
+  label?: string;
+  description?: string;
+  type?: "string" | "number" | "boolean" | "date" | "datetime" | "json" | "enum";
+  selectable?: boolean;
+  filterable?: boolean;
+  sortable?: boolean;
+  groupable?: boolean;
+  operators?: string[];
+  aggregations?: Array<"count" | "sum" | "avg" | "min" | "max">;
+};
+
+type RelationPolicy = {
+  expose?: boolean;
+  exposeAs?: string;
+  target?: string;
+  selectable?: boolean;
+  filterable?: boolean;
+  maxDepth?: number;
+};
+```
 
 Example:
 
 ```ts
-// querykit.config.ts
-import { defineQueryKitConfig } from "@ypanagidis/querykit/codegen";
-
-export default defineQueryKitConfig({
-  schema: "./src/db/schema.ts",
-  relations: "./src/db/relations.ts",
-
-  dialect: "mysql",
-
-  output: {
-    registry: "./src/querykit/physical-registry.generated.ts",
-    json: "./src/querykit/physical-registry.generated.json",
-    types: "./src/querykit/physical-registry.generated.d.ts",
-  },
-});
-```
-
-CLI:
-
-```bash
-querykit generate
-```
-
-Generated output:
-
-```ts
-export const physicalRegistry = {
-  tables: {
-    mediaPlan: {
-      tsName: "mediaPlan",
-      dbName: "skyflow_media_plan",
-      columns: {
-        id: {
-          tsName: "id",
-          dbName: "id",
-          valueType: "string",
-          nullable: false,
-        },
+const policy = {
+  sources: {
+    placements: {
+      expose: true,
+      exposeAs: "placement",
+      label: "Placement",
+      defaultLimit: 100,
+      maxLimit: 500,
+      fields: {
         name: {
-          tsName: "name",
-          dbName: "name",
-          valueType: "string",
-          nullable: false,
+          expose: true,
+          filterable: true,
+          sortable: true,
+        },
+        status: {
+          expose: true,
+          filterable: true,
+          sortable: true,
+          operators: ["eq", "in"],
+        },
+        budgetCents: {
+          expose: true,
+          exposeAs: "budget",
+          type: "number",
+          filterable: true,
+          sortable: true,
+          aggregations: ["sum", "avg"],
+          operators: ["eq", "gt", "gte", "lt", "lte"],
         },
       },
       relations: {
-        client: {
-          kind: "many-to-one",
-          alias: "client",
-          fromTable: "mediaPlan",
-          toTable: "client",
-          fromColumn: "clientId",
-          toColumn: "id",
+        campaign: {
+          expose: true,
+          target: "campaign",
+          selectable: true,
+          filterable: true,
+          maxDepth: 1,
         },
       },
     },
   },
-} as const;
+};
+```
+
+This policy can be authored in code or stored as JSON. Both paths should produce the same runtime structure.
+
+---
+
+## 10. Resolved Registry
+
+The resolved registry is the effective query surface.
+
+It is generated per request from:
+
+```txt
+- PhysicalRegistry
+- Engine defaults
+- One or more RegistryPolicy objects
+- Request context
+```
+
+Example:
+
+```ts
+const resolved = resolveRegistry({
+  physical,
+  defaults,
+  policies: [basePolicy, rolePolicy, tenantPolicy],
+  context: {
+    userId,
+    organizationId,
+    role,
+  },
+});
+```
+
+Resolution should happen conceptually on every query call.
+
+It may be cached later with a key such as:
+
+```txt
+physical version + policy version + tenant/user/role scope
+```
+
+Resolution rules must be explicit:
+
+```txt
+- Deny by default unless configured otherwise
+- expose: false disables everything beneath it
+- Source not exposed means fields and relations are unavailable
+- Field not exposed means it cannot be selected, filtered, sorted, grouped, or aggregated
+- Field capability cannot exceed source capability
+- Operators must be valid for field type and field policy
+- Public source names must not collide
+- Public field names must not collide
+- Stale policy references must produce structured errors
+```
+
+The compiler should only use `ResolvedRegistry`.
+
+---
+
+## 11. Defaults
+
+Defaults should be first-class so policies stay small.
+
+Example:
+
+```ts
+const defaults = {
+  exposure: "deny-by-default",
+  source: {
+    selectable: true,
+    filterable: true,
+    sortable: true,
+    maxLimit: 100,
+  },
+  field: {
+    selectable: true,
+    filterable: false,
+    sortable: false,
+    operators: "byType",
+  },
+  relation: {
+    selectable: false,
+    filterable: false,
+    maxDepth: 1,
+  },
+};
+```
+
+The default mode should be safe:
+
+```txt
+deny-by-default
+```
+
+Users can opt into convenience modes, but exposure should be explicit.
+
+---
+
+## 12. QueryIR
+
+`QueryIR` is the normalized adapter-facing AST.
+
+```txt
+QuerySpec + ResolvedRegistry
+  -> QueryIR
+  -> adapter executable
+```
+
+Adapters compile `QueryIR`, not raw user JSON.
+
+Example shape:
+
+```ts
+type QueryIR = {
+  kind: "select";
+  id: string;
+  source: ResolvedSource;
+  select: QueryIRSelectItem[];
+  joins: QueryIRJoin[];
+  where?: QueryIRExpression;
+  groupBy: QueryIRExpression[];
+  orderBy: QueryIROrderBy[];
+  limit?: number;
+  offset?: number;
+};
+```
+
+The IR should contain:
+
+```txt
+- Resolved physical references
+- Public-to-physical field mapping
+- Generated table aliases
+- Resolved relation paths
+- Bound params
+- Normalized arrays
+- Validated limit/offset
+```
+
+The IR is the point where the query becomes backend-compilable.
+
+---
+
+## 13. Adapter Responsibilities
+
+Each adapter has two jobs:
+
+```txt
+ORM/schema -> PhysicalRegistry
+QueryIR -> adapter executable
+```
+
+For Drizzle:
+
+```txt
+Drizzle schema -> PhysicalRegistry
+QueryIR -> Drizzle SQL
+```
+
+For Prisma:
+
+```txt
+Prisma schema / DMMF -> PhysicalRegistry
+QueryIR -> Prisma raw SQL initially
+```
+
+Prisma object-query compilation can be added later for the subset Prisma can represent cleanly.
+
+The core should not be shaped around Prisma's `findMany` API.
+
+The adapter executable might be:
+
+```txt
+- Drizzle SQL object
+- Raw SQL + params
+- Prisma raw query call
+- Kysely query
+- External analytics API payload
 ```
 
 ---
 
-# 15. Builder Manifest
+## 14. Drizzle Adapter
 
-Frontend UI builders should not consume the physical registry directly.
+The Drizzle adapter should:
 
-They should consume a **driver-produced builder manifest**.
+```txt
+- Generate PhysicalRegistry from Drizzle schema
+- Compile QueryIR to Drizzle SQL template objects
+- Execute through a Drizzle database instance
+- Normalize rows
+```
+
+Initial compiler scope:
+
+```txt
+- select
+- from
+- joins
+- where
+- group by
+- order by
+- limit
+- offset
+- params
+```
+
+It may compile to Drizzle's `sql` template API rather than the fluent query builder because dynamic plans often map more cleanly to SQL fragments.
+
+---
+
+## 15. Prisma Adapter
+
+The Prisma adapter should start conservatively.
+
+Initial support:
+
+```txt
+- Generate PhysicalRegistry from Prisma schema / DMMF
+- Compile QueryIR to raw SQL + params
+- Execute through Prisma raw query APIs
+```
+
+Later support:
+
+```txt
+- Compile a limited QueryIR subset to Prisma object queries
+```
+
+The object-query subset may support:
+
+```txt
+- Simple selects
+- Simple where filters
+- Simple orderBy
+- Simple pagination
+```
+
+It should reject unsupported QueryIR nodes explicitly.
+
+---
+
+## 16. Builder Manifest
+
+Frontend builders should not consume `PhysicalRegistry`.
+
+They should consume a manifest derived from `ResolvedRegistry`.
 
 Bad:
 
@@ -788,154 +713,67 @@ Frontend sees every database table and column.
 Good:
 
 ```txt
-Frontend asks driver:
-“What can this user build in this business context?”
+Frontend asks QueryKit:
+What can this user build in this context?
 ```
 
-Example manifest:
+The manifest can include:
 
-```json
-{
-  "driver": "symphony-dashboard",
-  "specType": "dashboard",
-  "widgets": [
-    {
-      "type": "metric-card",
-      "label": "Metric Card"
-    },
-    {
-      "type": "line-chart",
-      "label": "Line Chart"
-    },
-    {
-      "type": "table",
-      "label": "Table"
-    }
-  ],
-  "metrics": [
-    {
-      "id": "impressions",
-      "label": "Impressions",
-      "format": "integer"
-    },
-    {
-      "id": "spent",
-      "label": "Spend",
-      "format": "currency"
-    },
-    {
-      "id": "cpm",
-      "label": "CPM",
-      "format": "currency"
-    }
-  ],
-  "dimensions": [
-    {
-      "id": "date",
-      "label": "Date"
-    },
-    {
-      "id": "placement",
-      "label": "Placement"
-    },
-    {
-      "id": "platform",
-      "label": "Platform"
-    }
-  ],
-  "filters": [
-    {
-      "id": "dateRange",
-      "label": "Date Range",
-      "type": "date-range"
-    },
-    {
-      "id": "platform",
-      "label": "Platform",
-      "type": "multi-select"
-    }
-  ]
-}
+```txt
+- Public sources
+- Public fields
+- Labels
+- Field types
+- Operators
+- Sortable fields
+- Groupable fields
+- Aggregate-capable fields
+- Relation paths
+- Limits
 ```
 
-The manifest is business-safe.
-
-The physical registry is technical.
+The manifest is safe to expose because it is derived from the resolved public registry, not from physical schema facts.
 
 ---
 
-# 16. Forensic / Explain Mode
-
-Forensic tracing should be a first-class feature.
+## 17. Forensic / Explain Mode
 
 Every execution should be explainable.
 
-```ts
-const result = await runtime.run({
-  driver: "symphony-dashboard",
-  spec,
-  context,
-  explain: true,
-});
+Trace steps should include:
+
+```txt
+- parse-query
+- resolve-registry
+- validate-query
+- lower-to-ir
+- compile
+- execute
+- render
 ```
 
-Trace example:
+Example:
 
 ```json
 {
-  "driver": "symphony-dashboard",
-  "driverVersion": "v1",
-  "specVersion": "v1",
   "steps": [
-    {
-      "name": "parse",
-      "status": "ok"
-    },
-    {
-      "name": "authorize",
-      "status": "ok"
-    },
-    {
-      "name": "plan",
-      "status": "ok",
-      "summary": {
-        "widgets": 3,
-        "metrics": ["impressions", "views", "spent"],
-        "dimensions": ["date"]
-      }
-    },
-    {
-      "name": "lower",
-      "status": "ok",
-      "queries": [
-        "impressions-card",
-        "views-by-day",
-        "placement-table"
-      ]
-    },
+    { "name": "parse-query", "status": "ok" },
+    { "name": "resolve-registry", "status": "ok" },
+    { "name": "validate-query", "status": "ok" },
+    { "name": "lower-to-ir", "status": "ok" },
     {
       "name": "compile",
       "status": "ok",
-      "compiled": [
-        {
-          "queryId": "views-by-day",
-          "sql": "select ...",
-          "params": {
-            "from": "2026-05-01",
-            "to": "2026-05-31"
-          }
-        }
-      ]
+      "summary": {
+        "adapter": "drizzle",
+        "queryId": "placement-table"
+      }
     },
     {
       "name": "execute",
       "status": "ok",
       "timingMs": 42,
       "rowCount": 31
-    },
-    {
-      "name": "render",
-      "status": "ok"
     }
   ]
 }
@@ -945,546 +783,215 @@ Useful for:
 
 ```txt
 - Wrong dashboard numbers
-- Wrong generated document values
-- Wrong external API response
-- Wrong export columns
+- Wrong exports
 - Slow queries
-- Permission issues
-- Unsupported spec debugging
+- Unsupported filters
+- Permission or policy issues
+- Stale registry policy
+- Unexpected relation joins
 ```
 
-Trace output should support redaction:
-
-```ts
-createQueryRuntime({
-  redactParams(params) {
-    return {
-      ...params,
-      apiKey: "[redacted]",
-    };
-  },
-});
-```
+Trace output should support redaction.
 
 ---
 
-# 17. Drizzle Adapter
+## 18. Security Rules
 
-The Drizzle adapter should compile `QueryPlan` into executable Drizzle SQL.
+### 18.1 User JSON Never Becomes SQL
 
-It may compile to Drizzle’s SQL template API rather than only using the fluent query builder, because dynamic plans often map more cleanly to SQL fragments.
-
-The adapter owns:
-
-```txt
-- Table quoting
-- Column quoting
-- Params
-- Joins
-- Where clauses
-- Group by
-- Order by
-- Limit/offset
-- Execution
-```
-
-Example:
-
-```ts
-const engine = createDrizzleEngine({
-  db,
-  registry: physicalRegistry,
-  dialect: "mysql",
-});
-
-const result = await engine.execute({
-  kind: "query-plan",
-  id: "placement-table",
-  plan,
-  params,
-});
-```
-
----
-
-# 18. Example: Docgen Driver
-
-Input JSON:
-
-```json
-{
-  "version": "v2",
-  "type": "document-mapping",
-  "anchor": "mediaPlan",
-  "bindings": [
-    {
-      "target": "client_name",
-      "field": "mediaPlan.client.name"
-    },
-    {
-      "target": "budget",
-      "field": "mediaPlan.budget",
-      "format": "currency"
-    }
-  ],
-  "lists": [
-    {
-      "target": "placements",
-      "source": "mediaPlan.placements",
-      "fields": [
-        {
-          "target": "placement_name",
-          "field": "mediaPlan.placements.name"
-        },
-        {
-          "target": "units",
-          "field": "mediaPlan.placements.units"
-        }
-      ]
-    }
-  ]
-}
-```
-
-Docgen driver owns:
-
-```txt
-- Mapping schema
-- Anchor validity
-- Allowed document fields
-- Placeholder formatting
-- List source validation
-- Output payload shape
-```
-
-QueryKit owns:
-
-```txt
-- Query plan validation
-- Query compilation
-- Query execution
-- Trace output
-```
-
----
-
-# 19. Example: Dashboard Driver
-
-Input JSON:
-
-```json
-{
-  "version": "v1",
-  "type": "dashboard",
-  "title": "Client Performance",
-  "filters": {
-    "dateRange": {
-      "from": "2026-05-01",
-      "to": "2026-05-31"
-    }
-  },
-  "widgets": [
-    {
-      "id": "impressions_card",
-      "type": "metric-card",
-      "title": "Impressions",
-      "metric": "impressions",
-      "comparison": "previous_period"
-    },
-    {
-      "id": "views_by_day",
-      "type": "line-chart",
-      "title": "Views by Day",
-      "dimensions": ["date"],
-      "metrics": ["views"]
-    },
-    {
-      "id": "placement_table",
-      "type": "table",
-      "title": "Placement Performance",
-      "dimensions": ["placement"],
-      "metrics": ["impressions", "views", "clicks", "spent"]
-    }
-  ]
-}
-```
-
-Dashboard driver owns:
-
-```txt
-- Allowed widgets
-- Allowed metrics
-- Allowed dimensions
-- Organization scope
-- Date range behavior
-- Previous-period comparison logic
-- Output widget payloads
-```
-
-QueryKit owns:
-
-```txt
-- Executing aggregate/card/chart/table query plans
-```
-
----
-
-# 20. Example: External API Performance Driver
-
-Input JSON/API params:
-
-```json
-{
-  "version": "v1",
-  "type": "performance-report",
-  "source": "all",
-  "grain": "ad",
-  "segments": ["source", "device"],
-  "timeGrain": "daily",
-  "dateRange": {
-    "from": "2026-05-01",
-    "to": "2026-05-31"
-  },
-  "fields": [
-    "date",
-    "source",
-    "campaign_name",
-    "line_item_name",
-    "ad_name",
-    "impressions",
-    "views",
-    "clicks",
-    "budget"
-  ]
-}
-```
-
-Performance driver owns:
-
-```txt
-- Allowed output fields
-- API capabilities
-- Source selection
-- Unsupported source/grain/segment combinations
-- Google/Meta normalization
-- Historical correction
-- Budget formulas
-- Metric formulas
-```
-
-Initially, this driver can lower to:
-
-```ts
-{
-  kind: "trusted-sql",
-  id: "performance-report",
-  sql,
-  outputColumns,
-}
-```
-
-Later, parts can migrate to structured `QueryPlan`.
-
----
-
-# 21. Security Rules
-
-## 21.1 User JSON never becomes SQL
+User JSON can only reference public registry names.
 
 Forbidden:
 
 ```json
-{
-  "sql": "select * from users"
-}
+{ "sql": "select * from users" }
 ```
 
 Allowed:
 
 ```json
-{
-  "field": "status",
-  "op": "eq",
-  "value": "active"
-}
+{ "field": "status", "op": "eq", "value": "active" }
 ```
 
-## 21.2 Server-side validation always runs
+### 18.2 Deny By Default
 
-Even saved specs must be revalidated on execution.
-
-Reasons:
+A physical field existing does not mean it is queryable.
 
 ```txt
-- Schema changed
-- Permissions changed
-- Driver changed
-- Field was deprecated
-- User role changed
+Physical field exists != public field is exposed
 ```
 
-## 21.3 Deny by default
+### 18.3 Registry Is Not Authorization
 
-The physical registry exposing a column does not mean the driver exposes the field.
+The registry controls query shape and field exposure.
+
+It does not replace per-user row-level authorization.
+
+Host applications should provide mandatory constraints such as:
 
 ```txt
-Column exists != field is allowed
+organizationId = ctx.organizationId
+tenantId = ctx.tenantId
+deletedAt is null
 ```
 
-## 21.4 Trusted SQL is driver-only
+### 18.4 Trusted SQL Is Server-Side Only
 
-Only server-side trusted drivers can emit `trusted-sql`.
+Trusted SQL escape hatches may exist for migrations and legacy reports.
+
+They must never be available through public JSON query specs.
 
 ---
 
-# 22. Versioning and Migrations
+## 19. Optional Business Drivers
 
-Every saved JSON spec must include a version.
+Drivers remain useful, but they are no longer the core abstraction.
 
-```json
-{
-  "version": "v1",
-  "type": "dashboard",
-  "widgets": []
-}
+They translate domain-specific input into `QuerySpec`.
+
+```txt
+business JSON
+  -> driver.parse
+  -> driver.authorize
+  -> driver.toQuerySpec
+  -> QueryKit core
+  -> driver.render
 ```
 
-Drivers can provide migrations:
+Examples:
 
-```ts
-type SpecMigration = {
-  from: string;
-  to: string;
-  migrate: (oldSpec: unknown) => unknown;
-};
+```txt
+- Docgen mappings
+- Dashboard widget configs
+- External API report params
+- Saved report formats
 ```
 
-Example:
-
-```ts
-const dashboardMigrations = [
-  {
-    from: "v1",
-    to: "v2",
-    migrate: migrateDashboardV1ToV2,
-  },
-];
-```
+The core compiler should not depend on drivers.
 
 ---
 
-# 23. Caching
+## 20. Package Structure
 
-QueryKit can generate stable cache keys from:
-
-```txt
-- driver key
-- driver version
-- spec version
-- context scope
-- query plan hash
-- params hash
-```
-
-Useful for:
-
-```txt
-- Dashboards
-- External API reports
-- Exports
-- Document previews
-- Scheduled reports
-```
-
-Cache behavior should be configurable and optional.
-
----
-
-# 24. Testing Strategy
-
-## 24.1 Driver Tests
-
-Business behavior.
-
-```txt
-- Reject unsupported field combo
-- Reject unauthorized field
-- Choose correct source families
-- Resolve document fields
-- Validate widget specs
-```
-
-## 24.2 Query Plan Tests
-
-Lowering behavior.
-
-```txt
-- Dashboard card lowers to aggregate query
-- Table view lowers to select + filters + pagination
-- Docgen list lowers to child relation query
-```
-
-## 24.3 Engine Tests
-
-Technical compiler behavior.
-
-```txt
-- Joins compile correctly
-- Params are bound
-- Group by works
-- Invalid aliases fail
-- Unknown table/column fails
-```
-
-## 24.4 Integration Tests
-
-End-to-end with seed data.
-
-```txt
-- Dashboard returns expected metrics
-- Docgen returns expected placeholder payload
-- External report returns expected rows
-- Export contains expected columns
-```
-
----
-
-# 25. Implementation Phases
-
-## Phase 1 — Core Package Skeleton
-
-Build:
+Recommended package exports:
 
 ```txt
 @ypanagidis/querykit
 @ypanagidis/querykit/effect
-```
-
-Include:
-
-```txt
-- Driver interface
-- Effect runtime
-- Promise facade
-- LoweredQuery type
-- QueryPlan schema
-- q expression helpers
-- error classes
-- explain trace model
-```
-
----
-
-## Phase 2 — Drizzle Adapter
-
-Build:
-
-```txt
 @ypanagidis/querykit/drizzle
 @ypanagidis/querykit/drizzle-effect
+@ypanagidis/querykit/prisma
+@ypanagidis/querykit/codegen
+@ypanagidis/querykit/react
 ```
 
-Support:
+Core exports:
 
-```txt
-- select
-- from
-- joins
-- where
-- order by
-- limit
-- offset
-- params
+```ts
+QuerySpecSchema
+PhysicalRegistrySchema
+RegistryPolicySchema
+ResolvedRegistrySchema
+parseQuerySpec
+resolveRegistry
+validateQuerySpec
+lowerQuerySpecToIR
+QueryIR
+createQueryKitEngine
+defineQuerySpecDriver
 ```
 
-Do not start with every SQL feature.
+Drizzle exports:
+
+```ts
+generateDrizzlePhysicalRegistry
+compileQueryIRToDrizzle
+createDrizzleEngine
+```
+
+Prisma exports:
+
+```ts
+generatePrismaPhysicalRegistry
+compileQueryIRToPrismaRaw
+createPrismaEngine
+```
 
 ---
 
-## Phase 3 — Physical Registry Generator
+## 21. Implementation Phases
+
+### Phase 1 — Core Contracts
 
 Build:
 
 ```txt
-@ypanagidis/querykit/codegen
+- QuerySpecSchema
+- PhysicalRegistrySchema
+- RegistryPolicySchema
+- ResolvedRegistrySchema
+- Registry defaults
+- Registry resolver
+- Registry-aware query validator
+- QuerySpec to QueryIR lowering
+- Explain trace model
 ```
 
-Support:
+### Phase 2 — Drizzle Adapter
+
+Build:
 
 ```txt
-- Load Drizzle schema
-- Extract tables
-- Extract columns
-- Extract primary keys
-- Extract relations
-- Emit TS registry
-- Emit JSON registry
+- Drizzle schema to PhysicalRegistry
+- QueryIR to Drizzle SQL
+- Drizzle execution
+```
+
+### Phase 3 — Prisma Adapter
+
+Build:
+
+```txt
+- Prisma schema/DMMF to PhysicalRegistry
+- QueryIR to Prisma raw SQL execution
+- Later: limited Prisma object query compiler
+```
+
+### Phase 4 — Builder Manifest
+
+Build:
+
+```txt
+- ResolvedRegistry to builder manifest
+- Field/operator metadata for UI builders
+- Optional registry policy editor primitives
+```
+
+### Phase 5 — Optional Drivers
+
+Build:
+
+```txt
+- Driver interface for domain-specific specs
+- Docgen driver migration
+- Dashboard/report driver helpers
 ```
 
 ---
 
-## Phase 4 — Migrate Docgen
-
-Turn existing docgen into the first real driver.
-
-```txt
-Current mapping JSON
-  → DocgenDriver
-  → QueryPlan[]
-  → QueryKit engine
-  → placeholder payload
-```
-
-This is the safest first use case.
-
----
-
-## Phase 5 — Add Table View / Dashboard Driver
-
-Start with simple dynamic tables or simple dashboard widgets.
-
-Support:
-
-```txt
-- metric cards
-- line charts
-- tables
-- date filters
-- basic dimensions
-```
-
----
-
-## Phase 6 — Wrap External API v2
-
-Do not rewrite it immediately.
-
-Wrap current behavior as a driver:
-
-```txt
-parse      → current validators
-plan       → current planner
-lower      → current aggregate query as trusted-sql
-render     → current executor/output parser
-```
-
-Later, migrate pieces to structured `QueryPlan`.
-
----
-
-# 26. MVP Scope
+## 22. MVP Scope
 
 The first useful version should include:
 
 ```txt
-- Promise driver API
-- Effect driver API
-- QueryPlan schema
-- LoweredQuery support
-- Drizzle engine
-- Physical registry generator
+- Standard QuerySpec schema
+- Standard registry schemas
+- Registry resolver
+- Registry-aware validation
+- QueryIR lowering
+- Drizzle physical registry generation
+- Drizzle QueryIR compiler
 - Explain trace
-- Docgen driver migration
 ```
 
 Do not include initially:
@@ -1493,31 +1000,24 @@ Do not include initially:
 - Full BI query compiler
 - Complex formula language
 - Window functions
-- Multi-dialect compiler
-- Full dashboard builder UI
+- CTE builder
 - Public plugin system
+- Full dashboard builder UI
+- Prisma object-query compiler beyond a small subset
 ```
 
 ---
 
-# 27. Final Position
+## 23. Final Position
 
-`QueryKit` should be:
+QueryKit should be:
 
-> A driver-based dynamic query runtime for turning trusted business-owned JSON specs into safe executable query plans, with a generated physical registry, a neutral query compiler, Drizzle execution, builder manifests, and forensic tracing.
+> A registry-backed JSON query compiler for TypeScript apps. It validates a standard query spec against a trusted per-request resolved registry, lowers it to QueryIR, compiles it through adapters such as Drizzle and Prisma, and provides forensic traces for every step.
 
-It should provide both:
+The central product is not the ORM adapter.
 
-```txt
-- Normal async/await API
-- Effect-native API
-```
-
-So non-Effect developers can use it comfortably, while Effect users get typed errors, services, layers, tracing, and composability.
-
-The strongest architectural boundary is:
+The central product is the safe query contract:
 
 ```txt
-Business drivers decide what is allowed and meaningful.
-QueryKit decides how to compile, execute, trace, and debug queries.
+QuerySpec + ResolvedRegistry -> QueryIR
 ```
