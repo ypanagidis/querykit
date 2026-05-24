@@ -9,31 +9,31 @@ importers:
   .:
     devDependencies:
       '@effect/language-service':
-        specifier: ^0.86.2
+        specifier: 0.86.2
         version: 0.86.2
       '@typescript/native-preview':
         specifier: 7.0.0-dev.20260523.1
         version: 7.0.0-dev.20260523.1
       effect-solutions:
-        specifier: ^0.5.3
+        specifier: 0.5.3
         version: 0.5.3
       oxfmt:
-        specifier: ^0.51.0
+        specifier: 0.51.0
         version: 0.51.0
       oxlint:
-        specifier: ^1.66.0
+        specifier: 1.66.0
         version: 1.66.0(oxlint-tsgolint@0.23.0)
       oxlint-tsgolint:
-        specifier: ^0.23.0
+        specifier: 0.23.0
         version: 0.23.0
       tsdown:
-        specifier: ^0.15.0
+        specifier: 0.15.12
         version: 0.15.12(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)(@typescript/native-preview@7.0.0-dev.20260523.1)(typescript@5.9.3)
       typescript:
-        specifier: ^5.8.3
+        specifier: 5.9.3
         version: 5.9.3
       vitest:
-        specifier: ^3.2.4
+        specifier: 3.2.4
         version: 3.2.4(@types/node@25.9.1)(jiti@2.7.0)(yaml@2.9.0)
 
   apps/docs: {}
@@ -58,7 +58,7 @@ importers:
         specifier: 1.0.0-rc.3
         version: 1.0.0-rc.3(effect@4.0.0-beta.59)(mysql2@3.22.3(@types/node@25.9.1))(pg@8.21.0)(zod@4.4.3)
       mysql2:
-        specifier: ^3.22.3
+        specifier: 3.22.3
         version: 3.22.3(@types/node@25.9.1)
     devDependencies:
       drizzle-kit:
@@ -77,7 +77,7 @@ importers:
         specifier: 1.0.0-rc.3
         version: 1.0.0-rc.3(effect@4.0.0-beta.59)(mysql2@3.22.3(@types/node@25.9.1))(pg@8.21.0)(zod@4.4.3)
       pg:
-        specifier: ^8.16.3
+        specifier: 8.21.0
         version: 8.21.0
     devDependencies:
       drizzle-kit:
@@ -99,10 +99,10 @@ importers:
   packages/querykit:
     dependencies:
       effect:
-        specifier: ^3.21.2
+        specifier: 3.21.2
         version: 3.21.2
       zod:
-        specifier: ^4.4.3
+        specifier: 4.4.3
         version: 4.4.3
 
   packages/querykit-drizzle:
